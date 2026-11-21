@@ -76,6 +76,8 @@ Use a session without a conflicting native Claude login or `ANTHROPIC_API_KEY`. 
 
 ## Diagnostics
 
+From a source checkout, run `node bin/buildsteward.js help` for the command reference. For an installed bundle, run its CLI with `help`.
+
 ```bash
 buildsteward doctor --agents opencode,codex
 buildsteward doctor --scope global --agents claude
