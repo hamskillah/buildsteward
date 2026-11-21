@@ -105,6 +105,9 @@ function backupName(dest) {return `${backupPrefix(dest)}${Date.now()}-${Math.ran
 export async function setupInstallation({root=process.cwd(),home=os.homedir(),scope='project',agents,mode='approval',graph='off',dryRun=false,force=false,withRuntime=true}={}) {
   validateScope(scope); validateMode(mode); validateGraph(graph);
   const chosen=normalizeAgents(agents);
+  if (!await exists(path.join(SKILL_SOURCE, 'SKILL.md'))) {
+    throw new Error('Skill source is unavailable in this bundled runtime. Run setup from the globally installed BuildSteward CLI or a source checkout.');
+  }
   const destinations=[...new Set(chosen.map(a=>installTarget(a,scope,root,home)))];
   const before=await Promise.all(destinations.map(async dest=>({path:dest,...await inspectTarget(dest)})));
   for (const b of before) {

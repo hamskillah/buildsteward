@@ -1,27 +1,52 @@
 # BuildSteward
 
 [![Checks](https://github.com/hamskillah/buildsteward/actions/workflows/check.yml/badge.svg)](https://github.com/hamskillah/buildsteward/actions/workflows/check.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Give your coding agent an engineering workflow.** BuildSteward teaches it to inspect before editing, weigh dependencies with evidence, and report the checks it actually ran.
+**Give your coding agent a repeatable engineering workflow.** BuildSteward brings project inspection, dependency evidence, and verifiable work logs to the agent you already use.
 
-## Install and try it
+## Get started
 
-From your project directory, with Node.js 22.20 or later:
+Install once with Node.js 22 or later:
 
 ```bash
-npx skills add hamskillah/buildsteward --skill buildsteward
+npm install -g github:hamskillah/buildsteward
 ```
 
-Choose your agent, open a fresh session, and ask:
+From any project, launch the console:
 
-> Use BuildSteward to fix this bug. Reproduce it first and show which checks pass after the fix.
+```bash
+buildsteward
+```
 
-This installs the skill from GitHub. Explicit invocation has been tested in **Codex, OpenCode, Pi, Claude Code, and Hermes**. See the [tested versions and scenarios](BUILD_STATUS.md).
+Choose **Install or update the skill**, confirm the detected agent or enter its name, then open a fresh agent session. Try:
 
-## Optional CLI
+> Use BuildSteward to fix this bug. Reproduce it before changing code, then show the checks you ran.
 
-Add the local CLI if you need persistent work plans, decision records, or offline npm lockfile inventory. See [setup and troubleshooting](docs/INSTALLATION.md). Use one installer per skill directory.
+The GitHub package is the current install source. The npm registry package will use the same `buildsteward` executable.
 
-The agent and its host control execution and permissions. BuildSteward records decisions and checks locally. See [security boundaries](SECURITY.md).
+## What you can do
 
-[Quickstart bahasa Indonesia](docs/QUICKSTART-ID.md) · [Benchmark](docs/BENCHMARKS.md) · [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE)
+| When you need to… | Start with |
+|---|---|
+| Understand an unfamiliar project | `buildsteward inspect` |
+| See direct and nested packages recorded in an npm lockfile | `buildsteward deps inventory` |
+| Detect stale root lockfile declarations | `buildsteward deps project` |
+| Resume tracked project work with its verification history | `buildsteward work status` |
+| Check whether your agent's skill files are installed | `buildsteward doctor` |
+
+Work tracking requires a work plan. Lockfile consistency and inventory are local checks. Advisory lookup is a separate command. See the [CLI and setup guide](docs/INSTALLATION.md) and [developer workflow](docs/DEVELOPER-WORKFLOW.md).
+
+## Agent compatibility
+
+Explicit skill use was verified in **Codex, OpenCode, Pi, Claude Code, and Hermes**. The built-in installer targets Codex, OpenCode, Claude Code, and Cursor. Pi and Hermes use the portable skill installer. See the [tested versions and scenarios](BUILD_STATUS.md) and [agent-specific setup](docs/INSTALLATION.md).
+
+Prefer only the skill, without a permanent CLI? Run `npx skills add hamskillah/buildsteward --skill buildsteward` in your project.
+
+## How it works
+
+- **Skill:** Guides the agent to inspect, decide, implement, and verify in proportion to the task.
+- **Local CLI:** Stores work plans, decisions, and check evidence in the project and emits JSON from direct commands for scripts and agents.
+- **Permissions:** The agent host controls execution. BuildSteward evaluates requests and records outcomes locally. See [security boundaries](SECURITY.md).
+
+[Quickstart bahasa Indonesia](docs/QUICKSTART-ID.md) · [Architecture](docs/ARCHITECTURE.md) · [Benchmarks](docs/BENCHMARKS.md) · [Contributing](CONTRIBUTING.md)
