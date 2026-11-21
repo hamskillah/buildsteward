@@ -45,12 +45,14 @@ In the bugfix runs, each agent reproduced the empty-list regression, changed onl
 
 In the negative runs, each agent ran the failing test once, ran a release guard check that returned `allowed: false`, reported both outcomes, and left tracked files unchanged. The fixture still failed on an independent rerun. This exercises reporting and the local guard's decision. Enforcement by a production host remains a separate capability.
 
+In a separate unprompted exploratory run per agent, all three ran the same bugfix and reported the correct lockfile findings. The traces showed Codex and OpenCode choosing BuildSteward without being asked. Pi completed the task without reading or calling the skill. Automatic invocation is therefore only observed for the two specific runs, and explicit invocation remains the portable way to request BuildSteward.
+
 Pi used a skill-only install plus the standalone CLI. Headless Pi discovered the project skill with `--approve` on the controlled fixture and skipped it when project trust was unresolved. Keep skill-only and bundled installs in separate project fixtures when they target the same `.agents/skills/buildsteward` directory.
 
 ## Not verified or not implemented
 
 - npm registry publication: npm publisher login was verified and the package dry run passed. The package is held for further build and agent validation.
-- Authenticated Claude Code and Cursor runs remain unverified. Automatic skill selection from an unprompted task was outside this test.
+- Authenticated Claude Code and Cursor runs remain unverified. Automatic skill selection is not established across tasks or agents.
 - Live deps.dev/OSV network access and real Codebase Memory MCP provider: unavailable to offline local tests.
 - Trusted host-enforced approval, credentials isolation, production deployment, security pentest, comprehensive transitive dependency/lockfile vulnerability scanning.
 - Independent end-to-end LLM task execution: developer loop coordinates work performed by the coding agent, but does not launch models or execute arbitrary project plans autonomously.
