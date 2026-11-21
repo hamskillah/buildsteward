@@ -47,13 +47,17 @@ function normalizeAgents(agents) {
   unique.forEach(x=>{if (!Object.hasOwn(AGENTS,x)) throw new Error(`Unsupported agent ${x}`);});
   return unique;
 }
-async function payloadFingerprint(folder) {
+async function payloadFingerprint(folder, includeRuntime = false) {
   const fileEntries=[];
   async function visit(dir, rel='') {
-    const entries=await fs.readdir(dir,{withFileTypes:true});
+    let entries=await fs.readdir(dir,{withFileTypes:true});
+    if (includeRuntime && rel === '') entries.push({name:'runtime',isDirectory:()=>true});
+    if (includeRuntime && rel === 'runtime') entries=entries.filter(e=>RUNTIME_ITEMS.includes(e.name));
     for (const e of entries.sort((a,b)=>a.name.localeCompare(b.name))) {
       if (e.name===MARKER) continue;
-      const full=path.join(dir,e.name), r=path.posix.join(rel,e.name);
+      const syntheticRuntime=includeRuntime && rel==='' && e.name==='runtime';
+      const full=syntheticRuntime ? SOURCE_ROOT : path.join(dir,e.name), r=path.posix.join(rel,e.name);
+      if (syntheticRuntime) { await visit(full,r); continue; }
       if (e.isSymbolicLink()) throw new Error(`Refusing symlink inside installed skill: ${r}`);
       if (e.isDirectory()) await visit(full,r);
       else if (e.isFile()) fileEntries.push([r,createHash('sha256').update(await fs.readFile(full)).digest('hex')]);
@@ -116,14 +120,21 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
   }
   const results=[];
   const rootAbs=path.resolve(root);
-  const projectConfigExists=await exists(path.join(stateDir(rootAbs),'config.json'));
-  if (dryRun) return {scope,agents:chosen,mode,graph,dryRun:true,withRuntime,paths:before.map(b=>({path:b.path,action:b.status==='missing'?'install':'update',previousStatus:b.status})),projectConfig:scope==='project'?(projectConfigExists?'preserve':'create'):'not-touched'};
-  // Do not overwrite an existing project policy during skill setup.
-  if (scope==='project' && !projectConfigExists) {
+  const projectConfigExists=scope==='project' && await exists(path.join(stateDir(rootAbs),'config.json'));
+  const needsConfig=scope==='project' && withRuntime && !projectConfigExists;
+  const fingerprint=await payloadFingerprint(SKILL_SOURCE,withRuntime);
+  const unchanged=b=>b.status==='managed' && b.fingerprint===fingerprint && b.marker.withRuntime===withRuntime;
+  if (dryRun) return {scope,agents:chosen,mode,graph,dryRun:true,withRuntime,paths:before.map(b=>({path:b.path,action:unchanged(b)?'unchanged':b.status==='missing'?'install':'update',previousStatus:b.status})),projectConfig:needsConfig?'create':projectConfigExists?'preserve':'not-touched'};
+  // Do not overwrite an existing project policy or create one for skill-only.
+  if (needsConfig) {
     await initialize(rootAbs,mode);
     if(graph!=='off') await setConfig(rootAbs,'memory.codeGraph.mode',graph);
   }
   for (const b of before) {
+    if (unchanged(b)) {
+      results.push({path:b.path,action:'unchanged',backup:null});
+      continue;
+    }
     const {stage,tempDir}=await makeStaging(b.path,withRuntime);
     let backup=null;
     try {
@@ -138,7 +149,8 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
       results.push({path:b.path,action:b.status==='missing'?'installed':'updated',backup});
     } finally {await fs.rm(tempDir,{recursive:true,force:true}).catch(()=>{});}
   }
-  return {scope,agents:chosen,mode:scope==='project'?(await readConfig(rootAbs)).autonomy.mode:null,graph:scope==='project'?(await readConfig(rootAbs)).memory.codeGraph.mode:null,withRuntime,paths:results,projectConfig:scope==='project'?(projectConfigExists?'preserved':'created'):'not-touched'};
+  const config=withRuntime && scope==='project' ? await readConfig(rootAbs) : null;
+  return {scope,agents:chosen,mode:config?.autonomy.mode ?? null,graph:config?.memory.codeGraph.mode ?? null,withRuntime,paths:results,projectConfig:needsConfig?'created':projectConfigExists?'preserved':'not-touched'};
 }
 
 export async function installationDoctor({root=process.cwd(),home=os.homedir(),scope='project',agents}={}) {

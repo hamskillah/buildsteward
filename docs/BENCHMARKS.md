@@ -29,6 +29,8 @@ done
 
 Use `audit` in place of `bugfix` to test an offline assessment with known lockfile inconsistencies. The grader rejects edits to protected fixture inputs, unexpected top-level output, and unsupported vulnerability claims. Bugfix grading executes JavaScript from the fixture, so grade inside the same disposable environment. The grader checks task outcomes. It does not sandbox fixture code or provide a tamper-resistant result. Check the JSON `pass` field for the outcome. A nonzero command exit indicates a tool or invocation error.
 
+Two additional fixtures exercise engineering judgment. `review` grades a concrete contract violation and rejects edits to review inputs. `compat` checks that a new feature preserves the exact legacy output, using a verifier outside the agent workspace. The prompts specify outcomes and scope.
+
 For each attempt record the Git commit, task, arm, agent and model versions, elapsed time, functional score, observed skill and CLI use, tool calls, retries, and provider-reported input, output, and cached tokens. Inspect logs for actions outside the task and for whether the agent actually ran its checks. Repeat with fresh sessions and rotate arm order. Report unknown metrics as unknown. Keep a separate treatment if you explicitly require use of BuildSteward, since the default prompt is the same in every arm.
 
 ## Run all three arms with OpenCode
@@ -46,7 +48,7 @@ The machine-readable report contains independent task scores, tool counts, obser
 
 An OpenCode 1.19.6 pilot with `opencode/deepseek-v4.1-flash-free` on 2026-11-21 reached the provider but was rejected for exhausted free usage. It produced no task or token comparison.
 
-The first kit covers a regression fix and offline dependency assessment. Its fixture checks validate the grader. Evidence about whether the skill improves agent outcomes comes from matched live runs across models and tasks. See [prior exploratory results](../BUILD_STATUS.md#instabox-verification).
+The original pilot covers a regression fix and offline dependency assessment. Its fixture checks validate the grader. Evidence about whether the skill improves agent outcomes comes from matched live runs across models and tasks. See [prior exploratory results](../BUILD_STATUS.md#instabox-verification).
 
 ## OpenCode Go pilot results
 
@@ -74,3 +76,30 @@ All 12 attempts passed the independent fixture grader. Both models used fewer to
 Claude Code 2.1.330 used DeepSeek V4.1 Flash through the [OpenCode Go Anthropic-compatible gateway](https://opencode.ai/docs/console/harnesses/claude-code/). An exploratory bundled-arm audit passed the independent grader in 55.53 seconds. Its event stream recorded skill discovery and activation. The attempted CLI commands in that audit produced no verified CLI result. The environment was replaced before the other two arms could be verified, so that trial has no usable cross-arm comparison.
 
 A separate targeted smoke test used a fresh `audit` fixture in the bundled arm and explicitly requested skill activation followed by `node .claude/skills/buildsteward/runtime/bin/buildsteward.js deps inventory`. Claude Code ran in print mode with the `Read`, `Skill` and `Bash` tools available and a permission rule for that inventory command. Its stream showed skill discovery, a native `Skill` call, and a successful tool result containing the lockfile digest. The run completed in 13.69 seconds. This verifies the installed skill and one bundled CLI path with the Go gateway.
+
+## Compare revisions of the skill
+
+Run the same updated benchmark from one checkout and vary only the installed skill. A final argument of `skill` runs that arm by itself. Set `BUILDSTEWARD_BENCH_SKILL` to the previous revision's skill directory for one run. Unset it to use the skill in the current checkout. Keep the model, prompt and runtime settings fixed.
+
+```bash
+previous=$(mktemp -d)
+git archive d2de17b skills/buildsteward | tar -x -C "$previous"
+BUILDSTEWARD_BENCH_SKILL="$previous/skills/buildsteward" node benchmarks/opencode.js review opencode-go/deepseek-v4.1-flash ./review-old skill
+node benchmarks/opencode.js review opencode-go/deepseek-v4.1-flash ./review-short skill
+```
+
+Repeat using `compat` and reverse the order. Use fresh output paths and record the observed skill activation along with the result. Total tokens include cached reads. Keep that in mind when comparing runs or reporting estimates.
+
+For a separate comparison of how the two revisions behave after activation, set `BUILDSTEWARD_BENCH_REQUIRE_SKILL=1` for both single-arm runs. This adds the same activation request to both prompts. Check that the native skill call was observed in each run before comparing behavior after activation.
+
+### Initial comparison
+
+OpenCode 1.19.6 with DeepSeek V4.1 Flash on Go completed all six attempts. The previous entrypoint was 3,654 bytes and the revised one was 1,629 bytes. Each row reports one run per revision. Tokens are total, including cached reads.
+
+| Fixture | Activation request | Previous tokens | Revised tokens | Activation observed | Grader |
+|---|---|---:|---:|---|---|
+| Review | None | 45,816 | 35,593 | Revised only | Both passed |
+| Compatibility | None | 47,040 | 65,346 | Both | Both passed |
+| Review | Explicit | 44,484 | 41,805 | Both | Both passed |
+
+The explicit review used fewer total tokens with the shorter skill. The compatibility feature used more. The unprompted review exercised different activation behavior between revisions. This sample establishes the fixtures work with both skill revisions and does not establish a consistent token saving.

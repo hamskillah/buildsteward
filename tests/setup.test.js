@@ -28,7 +28,7 @@ test('project setup installs runtime and shared skill for OpenCode + Codex witho
     assert.equal((await readConfig(root)).memory.codeGraph.mode,'auto');
     const p=installTarget('codex','project',root,home);
     assert.equal(p,installTarget('opencode','project',root,home));
-    assert.match(await read(path.join(p,'SKILL.md')),/Developer Kernel/);
+    assert.match(await read(path.join(p,'SKILL.md')),/^name: buildsteward$/m);
     const cli=path.join(p,'runtime','bin','buildsteward.js');
     const result=spawnSync(process.execPath,[cli,'--root',root,'inspect'],{encoding:'utf8',timeout:4000});
     assert.equal(result.status,0,result.stderr);
@@ -160,4 +160,21 @@ test('help on mutating commands never changes files', async () => temporary(asyn
     assert.deepEqual(await fs.readdir(root),[]);
     assert.deepEqual(await fs.readdir(home),[]);
   }
+}));
+
+test('identical setup is unchanged and skill-only leaves project settings absent', async () => temporary(async ({root,home}) => {
+  const options = { root, home, agents: 'codex', withRuntime: false };
+  const first = await setupInstallation(options);
+  assert.equal(first.projectConfig, 'not-touched');
+  const marker = path.join(first.paths[0].path, '.buildsteward-install.json');
+  const original = await fs.readFile(marker, 'utf8');
+  assert.equal((await setupInstallation({ ...options, dryRun: true })).paths[0].action, 'unchanged');
+  const second = await setupInstallation(options);
+  assert.equal(second.paths[0].action, 'unchanged');
+  assert.equal(second.paths[0].backup, null);
+  assert.equal(await fs.readFile(marker, 'utf8'), original);
+  await assert.rejects(fs.stat(path.join(root, '.buildsteward')), { code: 'ENOENT' });
+  const full = { ...options, withRuntime: true };
+  assert.equal((await setupInstallation(full)).paths[0].action, 'updated');
+  assert.equal((await setupInstallation(full)).paths[0].action, 'unchanged');
 }));

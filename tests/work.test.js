@@ -103,3 +103,29 @@ test('three identical failed checks stop repeated no-progress test loops',async(
   await resumeWork(root,'fix');
   assert.equal((await nextWork(root)).task.id,'fix');
 }));
+
+test('real Node test failure still blocks after three runs with changing timing', async () => fixture(async root => {
+  const small = { goal: 'Fix a repeatable assertion', tasks: [
+    { id: 'fix', title: 'Fix the assertion', kind: 'bugfix', risk: 'low', verification: 'automated', dependsOn: [], acceptance: ['Test passes'] },
+  ] };
+  await createWork(root, small);
+  await startWork(root, 'fix');
+  await completeWork(root, 'fix', 'Fixture prepared');
+  await fs.writeFile(path.join(root, 'sample.test.mjs'), `
+    import { test } from 'node:test';
+    import assert from 'node:assert/strict';
+    import { setTimeout } from 'node:timers/promises';
+    import { readFile, writeFile } from 'node:fs/promises';
+    test('repeatable failure', async () => {
+      const prior = Number(await readFile('run-count', 'utf8').catch(() => '0'));
+      await writeFile('run-count', String(prior + 1));
+      await setTimeout(30 * prior);
+      assert.equal(1, 2);
+    });
+  `);
+  const runs = [];
+  for (let i = 0; i < 3; i++) runs.push(await checkWork(root, 'fix', 'node-test', { confirmed: true }));
+  assert.equal(new Set(runs.map(run => run.check.outputDigest)).size, 3);
+  assert.equal(new Set(runs.map(run => run.check.failureFingerprint)).size, 1);
+  assert.deepEqual(runs.map(run => run.status), ['implemented', 'implemented', 'blocked']);
+}));

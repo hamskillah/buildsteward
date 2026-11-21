@@ -8,12 +8,22 @@ const tasks = {
   bugfix: {
     files: ['totals.mjs', 'totals.test.mjs'],
     mutable: 'totals.mjs',
-    prompt: 'Fix sum([]) to return 0 while preserving non-empty sums. Change only totals.mjs. Reproduce the failure and rerun node --test after the fix. Report what passed.',
+    prompt: 'Fix sum([]) to return 0 while preserving non-empty sums. Change only totals.mjs.',
   },
   audit: {
     files: ['package.json', 'package-lock.json'],
     mutable: 'assessment.json',
     prompt: 'Review the npm manifest and lockfile offline. Write only assessment.json with three string fields: staleRoot (stale root dependency name), nestedVersion (recorded version of nested-pkg), and vulnerabilityStatus (safe, vulnerable, or unknown based on the available evidence). Explain any limits in your response.',
+  },
+  review: {
+    files: ['preferences.mjs', 'contract.md'],
+    mutable: 'review.json',
+    prompt: 'Review preferences.mjs against contract.md. Write only review.json with fields setting (the affected setting), requestedValue (the boolean the caller requested), and returnedValue (the wrong boolean returned). Report only a concrete contract violation.',
+  },
+  compat: {
+    files: ['format.mjs', 'contract.md'],
+    mutable: 'format.mjs',
+    prompt: 'Implement the currency feature described in contract.md. Change only format.mjs.',
   },
 };
 const arms = new Set(['baseline', 'skill', 'cli']);
@@ -38,7 +48,7 @@ async function prepare(taskId, arm, directory) {
     for (const location of ['.agents', '.claude']) {
       const skills = path.join(directory, location, 'skills');
       await mkdir(skills, { recursive: true });
-      await cp(path.join(root, 'skills/buildsteward'), path.join(skills, 'buildsteward'), { recursive: true });
+      await cp(path.resolve(process.env.BUILDSTEWARD_BENCH_SKILL || path.join(root, 'skills/buildsteward')), path.join(skills, 'buildsteward'), { recursive: true });
     }
   }
   if (arm === 'cli') {
@@ -64,8 +74,9 @@ async function score(taskId, directory) {
   if (!protectedFilesIntact || !output || unexpectedEntries.length) {
     return { task: taskId, pass: false, protectedFilesIntact, unexpectedEntries, evaluated: false };
   }
-  if (taskId === 'bugfix') {
-    const test = spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'totals.test.mjs'], {
+  if (taskId === 'bugfix' || taskId === 'compat') {
+    const tests = taskId === 'bugfix' ? 'totals.test.mjs' : path.join(import.meta.dirname, 'fixtures/compat/verify.mjs');
+    const test = spawnSync(process.execPath, ['--test', '--test-reporter=tap', tests], {
       cwd: directory, timeout: 10_000, encoding: 'utf8', maxBuffer: 64 * 1024,
       env: { PATH: process.env.PATH || '' },
     });
@@ -80,6 +91,11 @@ async function score(taskId, directory) {
       Object.keys(assessment).length !== 3) {
     return { task: taskId, pass: false, protectedFilesIntact, reportValid: false };
   }
+  if (taskId === 'review') {
+    const findings = { setting: assessment.setting === 'email', requestedValue: assessment.requestedValue === false,
+      returnedValue: assessment.returnedValue === true };
+    return { task: taskId, pass: Object.values(findings).every(Boolean), protectedFilesIntact, findings };
+  }
   const findings = {
     staleRoot: assessment?.staleRoot === 'removed-pkg',
     nestedVersion: assessment?.nestedVersion === '2.0.0',
@@ -92,7 +108,7 @@ try {
   const [command, task, ...args] = process.argv.slice(2);
   if (!Object.hasOwn(tasks, task) || !((command === 'prepare' && args.length === 2) ||
       (command === 'score' && args.length === 1))) {
-    throw new Error('Usage: run.js prepare <bugfix|audit> <baseline|skill|cli> <new-dir> or run.js score <bugfix|audit> <dir>');
+    throw new Error('Usage: run.js prepare <bugfix|audit|review|compat> <baseline|skill|cli> <new-dir> or run.js score <bugfix|audit|review|compat> <dir>');
   }
   const directory = path.resolve(args.at(-1));
   const result = command === 'prepare' ? await prepare(task, args[0], directory) : await score(task, directory);
