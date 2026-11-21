@@ -1,6 +1,6 @@
 # npm publication via GitHub Trusted Publishing
 
-**Status:** GitHub release workflow is prepared, but BuildSteward is NOT published on npm. It does not create your npm account, acquire an OTP, or configure trusted publisher settings on your behalf.
+**Status:** The first version, `@hamskillah/buildsteward@0.1.0`, has been published. The GitHub workflow is prepared for subsequent versions after Trusted Publishing is configured.
 
 This is a manual, source-verified workflow for releases **after the package exists and trusted publisher is configured**. It deliberately cannot auto-publish from normal pushes or pull requests.
 

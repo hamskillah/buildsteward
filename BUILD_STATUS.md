@@ -55,9 +55,11 @@ Hermes consumed the installed BuildSteward skill from its configured skill direc
 
 Pi used a skill-only install plus the standalone CLI. Headless Pi discovered the project skill with `--approve` on the controlled fixture and skipped it when project trust was unresolved. Keep skill-only and bundled installs in separate project fixtures when they target the same `.agents/skills/buildsteward` directory.
 
-## Not verified or not implemented
+## npm release
 
-- npm registry publication: npm publisher login was verified and the package dry run passed. The package is held for further build and agent validation.
+The npm registry exposes `@hamskillah/buildsteward@0.1.0` as `latest`. Its integrity metadata matches the tarball packed from commit `892667c`. A clean registry installation remains a separate availability check.
+
+## Not verified or not implemented
 - An authenticated Cursor run remains unverified. Automatic skill selection is not established across tasks or agents.
 - Live deps.dev/OSV network access and real Codebase Memory MCP provider: unavailable to offline local tests.
 - Trusted host-enforced approval, credentials isolation, production deployment, security pentest, comprehensive transitive dependency/lockfile vulnerability scanning.
