@@ -25,15 +25,12 @@ Choose **Install or update the skill**, confirm the detected agent or enter its 
 
 The CLI is published as [`@hamskillah/buildsteward`](https://www.npmjs.com/package/@hamskillah/buildsteward).
 
-## What you can do
+## What you can do with npm 0.1.0
 
 | When you need to… | Start with |
 |---|---|
 | Understand an unfamiliar project | `buildsteward inspect` |
 | See direct and nested packages recorded in an npm lockfile | `buildsteward deps inventory` |
-| Trace which packages request an npm dependency | `buildsteward deps graph` |
-| Check exact npm lockfile versions against OSV | `buildsteward deps advisories --online` |
-| Inspect license and engine declarations for a locked npm version | `buildsteward deps metadata --name NAME --version VERSION --online` |
 | Detect stale root lockfile declarations | `buildsteward deps project` |
 | Resume tracked project work with its verification history | `buildsteward work status` |
 | Check whether your agent's skill files are installed | `buildsteward doctor` |
@@ -45,6 +42,8 @@ Work tracking requires a work plan. Lockfile consistency and inventory are local
 Explicit skill use was verified in **Codex, OpenCode, Pi, Claude Code, and Hermes**. The built-in installer targets Codex, OpenCode, Claude Code, and Cursor. Pi and Hermes use the portable skill installer. See the [tested versions and scenarios](BUILD_STATUS.md) and [agent-specific setup](docs/INSTALLATION.md).
 
 ## GitHub source and skill-only installs
+
+The GitHub source checkout also includes lockfile graph, OSV advisories, and exact-version publisher metadata. See the [dependency guide](docs/DEPENDENCY-INVENTORY.md).
 
 For a source checkout or the portable skill, see the separate [GitHub instructions](docs/INSTALLATION.md#github-source-and-skill-only-installs).
 

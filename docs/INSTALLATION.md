@@ -26,7 +26,7 @@ buildsteward setup \
 
 Available agents: `opencode`, `codex`, `claude`, `cursor`. `--agents` accepts a comma-separated list or `auto` to detect executables on the current PATH. Supported scopes: `project` (default) and `global`. Modes: `approval` (default) and `autonomous`. Optional graph: `off` (default), `auto`, `on`. Graph mode only controls configuration; Codebase Memory MCP must be installed/indexed separately.
 
-Before installing, inspect planned writes with `setup --dry-run --agents codex`. A project install creates `.buildsteward/config.json` if absent, but never overwrites existing project policy. Global install does not create project configuration. Setup copies the skill and bundled runtime directly under the agent's skills folder, so it does not need a globally linked npm package afterward.
+Before installing, inspect planned writes with `setup --dry-run --agents codex`. A project install with the runtime creates `.buildsteward/config.json` if absent, but never overwrites existing project policy. Global install does not create project configuration. Setup copies the skill and bundled runtime directly under the agent's skills folder, so it does not need a globally linked npm package afterward.
 
 To run Cortex tools with a project-level OpenCode/Codex installation:
 
@@ -109,7 +109,7 @@ buildsteward doctor --scope global --agents claude
 
 ## Managed skill-only installation
 
-If you want the BuildSteward installer to manage the skill without copying the Cortex runtime, use `--skill-only`. It can still be updated and removed by the same installer. If you only need the skill and no BuildSteward CLI at all, prefer Skills CLI installation above.
+If you want the BuildSteward installer to manage the skill without copying the runtime, use `--skill-only`. The current GitHub source also leaves project configuration untouched in this mode. It can still be updated and removed by the same installer. If you only need the skill and no BuildSteward CLI at all, prefer Skills CLI installation above.
 
 ```bash
 buildsteward setup --agents codex --skill-only --yes
@@ -118,7 +118,7 @@ buildsteward doctor --agents codex --strict
 
 ## Updates and rollback
 
-Use the same installer with the same scope/agents to update managed skills. Managed content is fingerprinted. If it was edited by a user, the installer refuses replacement; pass `--force` only if you have reviewed the changes and want them saved to a backup first.
+Use the same installer with the same scope/agents to update managed skills. The current GitHub source leaves identical managed content in place and creates no backup. Managed content is fingerprinted. If it was edited by a user, the installer refuses replacement; pass `--force` only if you have reviewed the changes and want them saved to a backup first.
 
 ```bash
 buildsteward setup --agents codex,opencode --yes

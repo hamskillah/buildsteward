@@ -51,3 +51,30 @@ test('audit scorer rejects false safety claims and lockfile modifications', asyn
   await writeFile(path.join(root, 'package-lock.json'), '{}');
   assert.equal(run('score', 'audit', root).pass, false);
 });
+
+test('review scores the actual regression and rejects edits to review inputs', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'steward-review-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const project = path.join(root, 'fixture');
+  run('prepare', 'review', 'baseline', project);
+  const report = path.join(project, 'review.json');
+  await writeFile(report, JSON.stringify({ setting: 'digest', requestedValue: false, returnedValue: true }));
+  assert.equal(run('score', 'review', project).pass, false);
+  await writeFile(report, JSON.stringify({ setting: 'email', requestedValue: false, returnedValue: true }));
+  assert.equal(run('score', 'review', project).pass, true);
+  await writeFile(path.join(project, 'preferences.mjs'), '');
+  assert.equal(run('score', 'review', project).pass, false);
+});
+
+test('feature grader checks legacy behavior separately from the new option', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'steward-compat-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const project = path.join(root, 'fixture');
+  run('prepare', 'compat', 'baseline', project);
+  const file = path.join(project, 'format.mjs');
+  assert.equal(run('score', 'compat', project).pass, false);
+  await writeFile(file, "export const formatItem = ({name,price}, {currency} = {}) => name + ': ' + price.toFixed(2) + ' ' + (currency ?? 'USD');\n");
+  assert.equal(run('score', 'compat', project).pass, false);
+  await writeFile(file, "export const formatItem = ({name,price}, {currency} = {}) => name + ': ' + price.toFixed(2) + (currency ? ' ' + currency : '');\n");
+  assert.equal(run('score', 'compat', project).pass, true);
+});

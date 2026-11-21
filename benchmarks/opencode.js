@@ -5,7 +5,9 @@ import { performance } from 'node:perf_hooks';
 
 const fixtureRunner = path.join(import.meta.dirname, 'run.js');
 const arms = ['baseline', 'skill', 'cli'];
+const writableFiles = { bugfix: 'totals.mjs', audit: 'assessment.json', review: 'review.json', compat: 'format.mjs' };
 const timeoutMs = 65_000;
+const requireSkill = process.env.BUILDSTEWARD_BENCH_REQUIRE_SKILL === '1';
 const cli = 'node .agents/skills/buildsteward/runtime/bin/buildsteward.js';
 const dependencyCommands = [`${cli} deps project`, `${cli} deps inventory`];
 
@@ -63,6 +65,7 @@ async function runArm({ task, model, arm, output }) {
   await mkdir(directory, { mode: 0o700 });
   const project = path.join(directory, 'project');
   const { prompt } = fixture('prepare', task, arm, project);
+  const taskPrompt = requireSkill ? 'Load and use the BuildSteward skill before working. ' + prompt : prompt;
   const env = { OPENCODE_DISABLE_AUTOUPDATE: 'true' };
   for (const name of [
     'PATH', 'SYSTEMROOT', 'TMPDIR',
@@ -91,7 +94,7 @@ async function runArm({ task, model, arm, output }) {
     glob: 'allow',
     grep: 'allow',
     skill: { buildsteward: 'allow' },
-    edit: { '*': 'deny', [task === 'bugfix' ? 'totals.mjs' : 'assessment.json']: 'allow' },
+    edit: { '*': 'deny', [writableFiles[task]]: 'allow' },
     bash: {
       'node --test': 'allow', 'node --test totals.test.mjs': 'allow',
       [dependencyCommands[0]]: 'allow', [dependencyCommands[1]]: 'allow',
@@ -99,7 +102,7 @@ async function runArm({ task, model, arm, output }) {
   } });
   const start = performance.now();
   const child = spawnSync('opencode', [
-    'run', '--pure', '--dir', project, '--format', 'json', '--model', model, prompt,
+    'run', '--pure', '--dir', project, '--format', 'json', '--model', model, taskPrompt,
   ], { cwd: project, env, input: '', encoding: 'utf8', timeout: timeoutMs, killSignal: 'SIGKILL', maxBuffer: 512 * 1024 });
   const stdout = child.stdout ?? '';
   await writeFile(path.join(directory, 'events.jsonl'), stdout, { mode: 0o600 });
@@ -119,15 +122,15 @@ async function runArm({ task, model, arm, output }) {
 try {
   const [task, model, outputPath, orderArg, ...extra] = process.argv.slice(2);
   const order = orderArg?.split(',') ?? arms;
-  if (!['bugfix', 'audit'].includes(task) || !/^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:/-]*$/i.test(model ?? '') ||
-      !outputPath || extra.length || order.length !== arms.length || !arms.every(arm => order.includes(arm))) {
-    throw new Error('Usage: node benchmarks/opencode.js <bugfix|audit> <provider/model> <new-directory> [baseline,skill,cli]');
+  if ((requireSkill && orderArg !== 'skill') || !Object.hasOwn(writableFiles, task) || !/^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:/-]*$/i.test(model ?? '') ||
+      !outputPath || extra.length || (orderArg !== 'skill' && (order.length !== arms.length || !arms.every(arm => order.includes(arm))))) {
+    throw new Error('Usage: node benchmarks/opencode.js <bugfix|audit|review|compat> <provider/model> <new-directory> [baseline,skill,cli|skill]');
   }
   const version = spawnSync('opencode', ['--version'], { encoding: 'utf8', timeout: 5000, maxBuffer: 4096 });
   if (version.status !== 0) throw new Error('OpenCode executable not available on PATH.');
   const output = path.resolve(outputPath);
   await mkdir(output, { mode: 0o700 });
-  const report = { task, model, agentVersion: version.stdout.trim(), timeoutSeconds: timeoutMs / 1000, runs: [] };
+  const report = { task, model, requireSkill, agentVersion: version.stdout.trim(), timeoutSeconds: timeoutMs / 1000, runs: [] };
   for (const arm of order) {
     const blocked = report.runs.some(run => run.status === 'blocked');
     report.runs.push(blocked ? { arm, status: 'not_run' } : await runArm({ task, model, arm, output }));

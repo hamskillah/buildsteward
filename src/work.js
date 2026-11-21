@@ -15,7 +15,7 @@ const VERIFY = new Set(['automated','manual']);
 const FINISHED = new Set(['checked','reviewed']);
 const RUNNERS = Object.freeze({
   'npm-test': ['npm',['test']],
-  'node-test': [process.execPath,['--test']],
+  'node-test': [process.execPath,['--test','--test-reporter=tap']],
   'go-test': ['go',['test','./...']],
   'cargo-test': ['cargo',['test']],
   'python-test': ['python3',['-m','unittest','discover']]
@@ -130,15 +130,21 @@ export async function checkWork(root,id,runner,{confirmed=false,timeoutMs=60000,
   // can execute arbitrary code. Run trusted projects with OS sandbox when required.
   const [binary,args]=RUNNERS[runner];
   const start=Date.now();
-  const result=spawn(binary,args,{cwd:path.resolve(root),encoding:'utf8',timeout:timeoutMs,maxBuffer:262144,windowsHide:true,shell:false});
+  const env={...process.env};
+  delete env.NODE_TEST_CONTEXT;
+  const result=spawn(binary,args,{cwd:path.resolve(root),encoding:'utf8',timeout:timeoutMs,maxBuffer:262144,windowsHide:true,shell:false,env});
   const output=(result.stdout||'')+'\n'+(result.stderr||'');
   const passed=!result.error&&result.status===0;
   const record={at:now(),runner,exitCode:typeof result.status==='number'?result.status:null,elapsedMs:Date.now()-start,passed,outputDigest:createHash('sha256').update(output).digest('hex'),failureKind:result.error?.code||null};
+  if (!passed && runner === 'node-test') {
+    const stableOutput = output.replace(/^(?:ℹ |# |[ \t]+)duration_ms:?[ \t]+[\d.eE+-]+[ \t]*\r?$/gm, 'duration_ms');
+    record.failureFingerprint = createHash('sha256').update(JSON.stringify([record.exitCode, record.failureKind, stableOutput])).digest('hex');
+  }
   task.checks.push(record);
   if(passed){task.status='checked';task.completedAt=now();}
-  else if(task.checks.slice(-3).length===3 && task.checks.slice(-3).every(c=>!c.passed && c.runner===runner && c.outputDigest===record.outputDigest)) {
+  else if(task.checks.slice(-3).length===3 && task.checks.slice(-3).every(c=>!c.passed && c.runner===runner && (c.failureFingerprint ?? c.outputDigest)===(record.failureFingerprint ?? record.outputDigest))) {
     task.status='blocked';
-    task.evidence.push({type:'stagnation',at:now(),summary:'Three repeated identical failing test outputs. Change hypothesis before resuming.'});
+    task.evidence.push({type:'stagnation',at:now(),summary:'Three repeated equivalent failing test outputs. Change hypothesis before resuming.'});
   }
   state.updatedAt=now();await saveState(root,'work',state);
   return {id,status:task.status,check:record,next:task.status==='blocked'?'Review repeated failure before resume':passed?'Check acceptance criteria and proceed':'Inspect failure and change implementation',note:'Exit code proves the command ran successfully, not full acceptance, security, or deploy readiness. Raw output is not stored to avoid capturing secrets.'};
