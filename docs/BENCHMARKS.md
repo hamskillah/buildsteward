@@ -31,4 +31,19 @@ Use `audit` in place of `bugfix` to test an offline assessment with known lockfi
 
 For each attempt record the Git commit, task, arm, agent and model versions, elapsed time, functional score, observed skill and CLI use, tool calls, retries, and provider-reported input, output, and cached tokens. Inspect logs for actions outside the task and for whether the agent actually ran its checks. Repeat with fresh sessions and rotate arm order. Report unknown metrics as unknown. Keep a separate treatment if you explicitly require use of BuildSteward, since the default prompt is the same in every arm.
 
+## Run all three arms with OpenCode
+
+With OpenCode and Git on PATH, run from the source checkout:
+
+```bash
+node benchmarks/opencode.js bugfix opencode-go/deepseek-v4.1-flash ./run-01
+node benchmarks/opencode.js audit opencode-go/deepseek-v4.1-flash ./run-02 cli,baseline,skill
+```
+
+Use a fresh output directory for every matrix. The optional final argument rotates arm order. For Go, set `OPENCODE_API_KEY` in the environment. A supported free model can run without a key when quota is available. Run only in a disposable OS environment or container with scoped provider credentials. The tool permission rules are shared across all arms. Both the agent and the grader can execute model-edited JavaScript with the process user's permissions, so separate fixture directories alone do not provide isolation.
+
+The machine-readable report contains independent task scores, tool counts, observed skill and CLI use, elapsed time, and OpenCode-normalized token counts and OpenCode's estimated cost. OpenCode 1.19.6 reports regular input, cached input reads and writes, regular output, reasoning, and total separately. Missing metrics are null. Each arm has a 65-second limit and separate home, OpenCode profile, and Git project. Raw events and stderr are private files under the output directory. Review them before sharing. An unfinished run with no step or tool activity is recorded as `blocked` and skips the remaining arms. An unfinished run with observed activity is recorded as `incomplete` and the matrix continues. Both statuses leave the task score unset. Runs that complete without selecting the skill are still valid observations about availability; use explicit activation as a separate experiment.
+
+An OpenCode 1.19.6 pilot with `opencode/deepseek-v4.1-flash-free` on 2026-11-21 reached the provider but was rejected for exhausted free usage. It produced no task or token comparison.
+
 The first kit covers a regression fix and offline dependency assessment. Its fixture checks validate the grader. Evidence about whether the skill improves agent outcomes comes from matched live runs across models and tasks. See [prior exploratory results](../BUILD_STATUS.md#instabox-verification).
