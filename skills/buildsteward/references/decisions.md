@@ -7,3 +7,5 @@ Routine: follow existing conventions. Comparative: assess 2–3 alternatives. Ar
 - Propose a selected option, WHY it fits, rejected alternatives and remaining uncertainty.
 - Stop when a justified choice exists. Reopen only if requirements or material evidence changed.
 - If the CLI is available, retrieve one matching Steward Library entry on demand; otherwise use the focused skill references. Never demand a missing repository-level file.
+
+For an offline npm inventory, run `deps inventory` if the optional CLI supports it. Otherwise inspect the v2/v3 lockfile’s `packages` records with existing repository tools. Keep nested install paths and recorded versions separate, and mark ambiguous aliases, links, and missing versions as unresolved. No dependency installation is required. Report inventory coverage separately from advisory and license evidence.
