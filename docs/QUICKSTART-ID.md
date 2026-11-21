@@ -1,17 +1,17 @@
 # Mulai memakai BuildSteward
 
-BuildSteward membantu coding agent memeriksa proyek, mengambil keputusan dengan bukti, dan melaporkan test yang benar-benar dijalankan.
-
-Dari folder proyek, dengan Node.js 22.20 atau lebih baru:
+Dengan Node.js 22 atau lebih baru, instal CLI sekali:
 
 ```bash
-npx skills add hamskillah/buildsteward --skill buildsteward
+npm install -g github:hamskillah/buildsteward
 ```
 
-Pilih agent, buka sesi baru, lalu minta:
+Masuk ke folder proyek dan ketik `buildsteward`. Pilih **Install or update the skill**, lalu pilih coding agent kamu atau tekan Enter jika pilihan yang terdeteksi sudah benar.
+
+Buka sesi agent baru, lalu minta:
 
 > Pakai BuildSteward untuk memperbaiki bug ini. Reproduksi bug sebelum mengubah kode dan laporkan hasil test sesudahnya.
 
-Cara ini memasang skill dari GitHub. Kalau kamu butuh penyimpanan work plan, catatan keputusan, atau inventaris lockfile npm offline, lihat [cara memasang CLI opsional](INSTALLATION.md). Pakai satu installer per direktori skill agar bundel CLI tidak tertimpa.
+Kalau mau langsung ke perintah tertentu, coba `buildsteward inspect`, `buildsteward doctor`, atau `buildsteward help`.
 
-[Lihat agent dan skenario yang sudah diuji](../BUILD_STATUS.md).
+[Panduan lengkap dan setup per agent](INSTALLATION.md) · [Agent dan skenario yang sudah diuji](../BUILD_STATUS.md).

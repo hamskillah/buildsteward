@@ -2,6 +2,14 @@
 
 BuildSteward works as (1) a portable, lightweight Agent Skill or (2) a skill bundled with its local Cortex CLI. **Node.js 22+ and Git** are needed for full GitHub-package setup; skill-only installation follows the Skills CLI requirements.
 
+## Install the CLI once
+
+```bash
+npm install -g github:hamskillah/buildsteward
+```
+
+Run `buildsteward` in your project terminal. The console offers project setup, inspection and an installation check. Direct commands such as `buildsteward doctor` work without opening the console and retain their JSON output.
+
 ## Skill-only installation
 
 Requires Node.js 22.20 or later for Skills CLI 1.9.0.

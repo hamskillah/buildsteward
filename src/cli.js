@@ -14,9 +14,10 @@ import { recordProgress } from './progress.js';
 import { graphStatus, graphSearch } from './graph.js';
 import { setupInstallation, installationDoctor, uninstallInstallation, rollbackInstallation, detectAgents } from './setup.js';
 import { createInterface } from 'node:readline/promises';
+import { runConsole } from './console.js';
 import { createWork, workStatus, nextWork, startWork, completeWork, reviewWork, blockWork, resumeWork, checkWork, workContext } from './work.js';
 
-const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  deps project (offline npm manifest/lockfile inspection)\n  deps inventory (offline npm v2/v3 lockfile entries)\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n  work create --file plan.json | status | next | context\n  work start --id ID | done --id ID --evidence TEXT\n  work review --id ID --evidence TEXT (manual tasks only)\n  work check --id ID --runner npm-test|node-test|go-test|cargo-test|python-test --confirm-run\n  work block --id ID --reason TEXT | resume --id ID\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
+const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: buildsteward [--root PATH] [command] [args]\n\n  Run buildsteward with no arguments in a terminal to open the project console.\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  deps project (offline npm manifest/lockfile inspection)\n  deps inventory (offline npm v2/v3 lockfile entries)\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n  work create --file plan.json | status | next | context\n  work start --id ID | done --id ID --evidence TEXT\n  work review --id ID --evidence TEXT (manual tasks only)\n  work check --id ID --runner npm-test|node-test|go-test|cargo-test|python-test --confirm-run\n  work block --id ID --reason TEXT | resume --id ID\n\nDirect commands emit JSON, except help. Network is used only by deps inspect.\n`;
 function param(args, key, fallback) {
   const i = args.indexOf(key); if (i === -1) return fallback;
   if (i + 1 >= args.length || args[i + 1].startsWith('--')) throw new Error('Missing value for '+key);
@@ -26,10 +27,18 @@ function required(args, key) { const v = param(args,key); if (!v) throw new Erro
 function positional(args) { return args.filter((v,i) => i === 0 || !args[i-1].startsWith('--')).filter(v => !v.startsWith('--')); }
 async function readInput(file) { if (!file) throw new Error('Missing --file'); return JSON.parse(await fs.readFile(path.resolve(file),'utf8')); }
 export async function main(args) {
-  if (args.length === 0 || ['help', '-h', '--help'].includes(args[0])) { process.stdout.write(HELP); return; }
   let root = process.cwd();
   if (args[0] === '--root') { if (!args[1]) throw new Error('Missing --root path'); root = path.resolve(args[1]); args = args.slice(2); }
-  if (args.length === 0 || args.includes('--help') || args.includes('-h')) { process.stdout.write(HELP); return; }
+  if (args.length === 0 && process.stdin.isTTY && process.stdout.isTTY) {
+    return runConsole({
+      root, input: process.stdin, output: process.stdout,
+      showHelp: () => process.stdout.write(HELP),
+    });
+  }
+  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
+    process.stdout.write(HELP);
+    return;
+  }
   const [command, sub, ...rest] = args;
   let result;
   switch(command) {

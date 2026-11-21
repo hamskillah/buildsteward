@@ -24,6 +24,19 @@ try {
   run(npm,['install','--ignore-scripts','--offline','--no-audit','--no-fund','--prefix',prefix,archive],{cwd:temp,env:{...process.env,npm_config_userconfig:path.join(temp,'empty-npmrc'),npm_config_cache:path.join(temp,'cache')}});
   const linked=path.join(prefix,'node_modules','.bin',process.platform==='win32'?'buildsteward.cmd':'buildsteward');
   if(!run(linked,['help'],{cwd:temp}).includes('BuildSteward')) throw new Error('Installed npm executable failed');
+  if (process.platform !== 'win32') {
+    const globalPrefix = path.join(temp, 'global');
+    run(npm, ['install', '--global', '--prefix', globalPrefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', archive], {
+      cwd: temp,
+      env: { ...process.env, npm_config_userconfig: path.join(temp, 'empty-npmrc'), npm_config_cache: path.join(temp, 'cache') },
+    });
+    const globalBin = path.join(globalPrefix, 'bin');
+    await fs.access(path.join(globalBin, 'buildsteward'), fs.constants.X_OK);
+    const result = JSON.parse(run('buildsteward', ['inspect'], {
+      cwd: temp, env: { ...process.env, PATH: globalBin + path.delimiter + (process.env.PATH || '') },
+    }));
+    if (!result.ok || result.result.root !== await fs.realpath(temp)) throw new Error('Global buildsteward command failed');
+  }
   const pkg=path.join(prefix,'node_modules','@hamskillah','buildsteward');
   const agents='opencode,codex,claude,cursor';
   const layout={
@@ -73,6 +86,15 @@ try {
   const installed=JSON.parse(run(process.execPath,[runtime,'--root',project,'setup','--agents','codex','--yes'],{cwd:pkg}));
   if(!installed.ok) throw new Error('Installer failed in isolated artifact');
   const installedRuntime=path.join(project,'.agents','skills','buildsteward','runtime','bin','buildsteward.js');
+  const unconfigured = path.join(temp, 'bundle-setup-target');
+  await fs.mkdir(unconfigured);
+  const bundleSetup = spawnSync(process.execPath, [
+    installedRuntime, '--root', unconfigured, 'setup', '--agents', 'codex', '--yes',
+  ], { encoding: 'utf8', timeout: 10_000 });
+  if (bundleSetup.status !== 1 || !bundleSetup.stderr.includes('Skill source is unavailable') ||
+      (await fs.readdir(unconfigured)).length !== 0) {
+    throw new Error('Bundled setup should report missing skill source before writing files');
+  }
   const inspected=JSON.parse(run(process.execPath,[installedRuntime,'--root',project,'inspect'],{cwd:project}));
   if(!inspected.ok) throw new Error('Copied Cortex runtime is unusable');
   const doctor=JSON.parse(run(process.execPath,[runtime,'--root',project,'doctor','--agents','codex','--strict'],{cwd:pkg}));
