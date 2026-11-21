@@ -29,6 +29,7 @@ export async function main(args) {
   if (args.length === 0 || ['help', '-h', '--help'].includes(args[0])) { process.stdout.write(HELP); return; }
   let root = process.cwd();
   if (args[0] === '--root') { if (!args[1]) throw new Error('Missing --root path'); root = path.resolve(args[1]); args = args.slice(2); }
+  if (args.length === 0 || args.includes('--help') || args.includes('-h')) { process.stdout.write(HELP); return; }
   const [command, sub, ...rest] = args;
   let result;
   switch(command) {

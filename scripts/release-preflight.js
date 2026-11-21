@@ -9,9 +9,9 @@ export function validateReleaseMetadata(pkg) {
   if(pkg.name!=='@hamskillah/buildsteward') problems.push('unexpected npm package identity');
   if(pkg.private===true) problems.push('package is private');
   if(typeof pkg.version!=='string'||!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(pkg.version)) problems.push('version must be explicit semver');
-  if(pkg.repository?.url!=='https://github.com/hamskillah/buildsteward.git') problems.push('repository provenance URL mismatch');
+  if(pkg.repository?.url!=='git+https://github.com/hamskillah/buildsteward.git') problems.push('repository provenance URL mismatch');
   if(pkg.publishConfig?.access!=='public') problems.push('publishConfig.access must be public');
-  if(pkg.bin?.buildsteward!=='./bin/buildsteward.js') problems.push('CLI entrypoint mismatch');
+  if(pkg.bin?.buildsteward!=='bin/buildsteward.js') problems.push('CLI entrypoint mismatch');
   for(const directory of ['bin','src','skills','knowledge','docs']) if(!pkg.files?.includes(directory)) problems.push(`missing packed directory ${directory}`);
   if(!pkg.scripts?.check||!pkg.scripts?.prepublishOnly) problems.push('release checks missing');
   return problems;

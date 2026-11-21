@@ -29,3 +29,26 @@ test('offline npm audit detects inconsistent direct dependency and preserves bou
   await fs.writeFile(path.join(root,'package-lock.json'),JSON.stringify(lock));
   assert.deepEqual((await inspectProjectDependencies(root)).mismatchedRanges,['react']);
 }));
+
+test('incomplete lockfiles cannot establish manifest consistency',async()=>env(async root=>{
+  await fs.writeFile(path.join(root,'package.json'),JSON.stringify({dependencies:{react:'^19'}}));
+  for (const lock of [
+    {lockfileVersion:3},
+    {lockfileVersion:3,packages:{'node_modules/react':{version:'19.0.0'}}},
+    {lockfileVersion:1,dependencies:{react:{version:'19.0.0'}}}
+  ]) {
+    await fs.writeFile(path.join(root,'package-lock.json'),JSON.stringify(lock));
+    assert.notEqual((await inspectProjectDependencies(root)).status,'consistent_manifest');
+  }
+}));
+
+test('stale declarations present only in the lockfile are inconsistent', async () => env(async root => {
+  await fs.writeFile(path.join(root, 'package.json'), '{}');
+  await fs.writeFile(path.join(root, 'package-lock.json'), JSON.stringify({
+    lockfileVersion:3,
+    packages:{'':{dependencies:{old:'1.0.0'}},'node_modules/old':{version:'1.0.0'}}
+  }));
+  const result = await inspectProjectDependencies(root);
+  assert.equal(result.status, 'inconsistent');
+  assert.deepEqual(result.mismatchedRanges, ['old']);
+}));

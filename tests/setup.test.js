@@ -150,3 +150,14 @@ test('auto detection without installed tools requests explicit agent selection i
     assert.deepEqual(await fs.readdir(root),[]);
   });
 });
+
+test('help on mutating commands never changes files', async () => temporary(async ({root,home}) => {
+  const cli=path.resolve('bin/buildsteward.js');
+  for (const command of ['setup','uninstall','rollback','init']) {
+    const result=spawnSync(process.execPath,[cli,'--root',root,command,'--help'],{encoding:'utf8',env:{...process.env,HOME:home},timeout:4000});
+    assert.equal(result.status,0,result.stderr);
+    assert.match(result.stdout,/Usage:/);
+    assert.deepEqual(await fs.readdir(root),[]);
+    assert.deepEqual(await fs.readdir(home),[]);
+  }
+}));
