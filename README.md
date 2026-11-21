@@ -5,12 +5,12 @@
 
 **Give your coding agent a repeatable engineering workflow.** BuildSteward brings project inspection, dependency evidence, and verifiable work logs to the agent you already use.
 
-## Get started
+## Install from npm
 
 Install once with Node.js 22 or later:
 
 ```bash
-npm install -g github:hamskillah/buildsteward
+npm install -g @hamskillah/buildsteward
 ```
 
 From any project, launch the console:
@@ -23,7 +23,7 @@ Choose **Install or update the skill**, confirm the detected agent or enter its 
 
 > Use BuildSteward to fix this bug. Reproduce it before changing code, then show the checks you ran.
 
-The GitHub package is the current install source. The npm registry package will use the same `buildsteward` executable.
+The CLI is published as [`@hamskillah/buildsteward`](https://www.npmjs.com/package/@hamskillah/buildsteward).
 
 ## What you can do
 
@@ -41,7 +41,9 @@ Work tracking requires a work plan. Lockfile consistency and inventory are local
 
 Explicit skill use was verified in **Codex, OpenCode, Pi, Claude Code, and Hermes**. The built-in installer targets Codex, OpenCode, Claude Code, and Cursor. Pi and Hermes use the portable skill installer. See the [tested versions and scenarios](BUILD_STATUS.md) and [agent-specific setup](docs/INSTALLATION.md).
 
-Prefer only the skill, without a permanent CLI? Run `npx skills add hamskillah/buildsteward --skill buildsteward` in your project.
+## GitHub source and skill-only installs
+
+For a source checkout or the portable skill, see the separate [GitHub instructions](docs/INSTALLATION.md#github-source-and-skill-only-installs).
 
 ## How it works
 

@@ -3,7 +3,7 @@
 Dengan Node.js 22 atau lebih baru, instal CLI sekali:
 
 ```bash
-npm install -g github:hamskillah/buildsteward
+npm install -g @hamskillah/buildsteward
 ```
 
 Masuk ke folder proyek dan ketik `buildsteward`. Pilih **Install or update the skill**, lalu pilih coding agent kamu atau tekan Enter jika pilihan yang terdeteksi sudah benar.

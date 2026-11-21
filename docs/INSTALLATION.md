@@ -1,38 +1,26 @@
 # BuildSteward Installation & Operations
 
-BuildSteward works as (1) a portable, lightweight Agent Skill or (2) a skill bundled with its local Cortex CLI. **Node.js 22+ and Git** are needed for full GitHub-package setup; skill-only installation follows the Skills CLI requirements.
+BuildSteward works as (1) a portable, lightweight Agent Skill or (2) a skill bundled with its local Cortex CLI. The npm CLI requires **Node.js 22+**. The GitHub source route also requires Git.
 
-## Install the CLI once
+## npm registry installation
 
 ```bash
-npm install -g github:hamskillah/buildsteward
+npm install -g @hamskillah/buildsteward
 ```
 
 Run `buildsteward` in your project terminal. The console offers project setup, inspection and an installation check. Direct commands such as `buildsteward doctor` work without opening the console and retain their JSON output.
 
-## Skill-only installation
-
-Requires Node.js 22.20 or later for Skills CLI 1.9.0.
-
-```bash
-npx skills add hamskillah/buildsteward --skill buildsteward
-```
-
-Open a fresh coding-agent session after installation. Check installed files with `npx skills list`. In OpenCode, `opencode debug skill` lists the skills discovered by the runtime. For a headless, single-agent install, append `-a codex -y` or replace `codex` with `opencode` or `claude-code`. Add `-g` for an account-wide install.
-
-The Skills CLI manages installation, updates and removal for this mode. BuildSteward does not claim ownership of installations created by another installer. This mode contains instructions and references but **does not** include the executable Decision/Dependency/Memory CLI runtime.
-
-## Full setup from public GitHub source
+### Setup without the console
 
 ```bash
 # Run within the target project directory
-npx --yes --package=github:hamskillah/buildsteward buildsteward setup
+buildsteward setup
 ```
 
 By default, with a TTY it detects coding-agent executables when possible and asks which targets to install. If none is on PATH, you can still enter supported agent names manually. In headless mode with no detected agent, pass `--agents` explicitly. On CI/headless machines, provide explicit flags:
 
 ```bash
-npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
+buildsteward setup \
   --scope project --agents opencode,codex --mode approval --graph off --yes
 ```
 
@@ -49,7 +37,51 @@ node .agents/skills/buildsteward/runtime/bin/buildsteward.js library search "dat
 
 For Claude Code or Cursor use their `.claude/skills/` or `.cursor/skills/` location respectively. For a global installation, use the corresponding path under your home directory.
 
-## Pi and Hermes Agent
+## Claude Code with an OpenCode Go model
+
+Install the Claude Code target from the project:
+
+```bash
+buildsteward setup --agents claude --yes
+```
+
+In a shell that already holds your OpenCode Go key as `OPENCODE_GO_API_KEY`, scope the custom backend to the Claude invocation:
+
+```bash
+ANTHROPIC_BASE_URL=https://opencode.ai/inference/go/anthropic \
+ANTHROPIC_AUTH_TOKEN="$OPENCODE_GO_API_KEY" \
+claude --model deepseek-v4.1-flash
+```
+
+Use a session without a conflicting native Claude login or `ANTHROPIC_API_KEY`. See the [OpenCode Go instructions for Claude Code](https://opencode.ai/docs/console/harnesses/claude-code/#go) and the [verified agent matrix](../BUILD_STATUS.md).
+
+## GitHub source and skill-only installs
+
+### Run from a GitHub checkout
+
+```bash
+git clone https://github.com/hamskillah/buildsteward.git "$HOME/buildsteward"
+```
+
+From your target project directory, run the checked-out CLI:
+
+```bash
+node "$HOME/buildsteward/bin/buildsteward.js"
+```
+
+### GitHub skill-only installation
+
+Requires Node.js 22.20 or later for Skills CLI 1.9.0.
+
+```bash
+npx skills add hamskillah/buildsteward --skill buildsteward
+```
+
+Open a fresh coding-agent session after installation. Check installed files with `npx skills list`. In OpenCode, `opencode debug skill` lists the skills discovered by the runtime. For a headless, single-agent install, append `-a codex -y` or replace `codex` with `opencode` or `claude-code`. Add `-g` for an account-wide install.
+
+The Skills CLI manages installation, updates and removal for this mode. BuildSteward does not claim ownership of installations created by another installer. This mode contains instructions and references but **does not** include the executable Decision/Dependency/Memory CLI runtime.
+
+### Pi and Hermes Agent
 
 Pi and Hermes can use BuildSteward via the Skills CLI:
 
@@ -63,24 +95,6 @@ hermes skills list
 ```
 
 Ask the agent to use BuildSteward in its next session. These installs provide the skill. For deterministic CLI commands, use a separate copy of the CLI from source or point Hermes at a full project's existing BuildSteward bundle through [external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills). Keep one installer per target directory.
-
-## Claude Code with an OpenCode Go model
-
-Install the Claude Code target from the project:
-
-```bash
-npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents claude --yes
-```
-
-In a shell that already holds your OpenCode Go key as `OPENCODE_GO_API_KEY`, scope the custom backend to the Claude invocation:
-
-```bash
-ANTHROPIC_BASE_URL=https://opencode.ai/inference/go/anthropic \
-ANTHROPIC_AUTH_TOKEN="$OPENCODE_GO_API_KEY" \
-claude --model deepseek-v4.1-flash
-```
-
-Use a session without a conflicting native Claude login or `ANTHROPIC_API_KEY`. See the [OpenCode Go instructions for Claude Code](https://opencode.ai/docs/console/harnesses/claude-code/#go) and the [verified agent matrix](../BUILD_STATUS.md).
 
 ## Diagnostics
 
@@ -125,8 +139,7 @@ The command **preserves project settings, checkpoints and decisions**. It moves 
 
 ## Safety and limitations
 
-- Do not run third-party GitHub package commands without reviewing the source and trust boundary. Pin a trusted Git commit/tag for repeatable installations where appropriate.
-- `npx --package=github:...` needs network access on first download and does not place a persistent `buildsteward` binary on PATH. The **bundled runtime** is the persistent local component.
+- For repeatable installations, pin a package version on npm or a commit in a source checkout.
 - The setup installs content under explicitly selected user or project directories. It does not edit `~/.config/opencode/opencode.json`, Claude settings or agent tool permissions.
 - A skill file on disk cannot guarantee host activation or secure approval enforcement. `approval` records are workflow metadata and not a substitute for host-enforced permissions.
 - No network is used by the installer itself. Optional `deps inspect` uses API calls when requested.

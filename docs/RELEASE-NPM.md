@@ -1,6 +1,6 @@
 # npm publication via GitHub Trusted Publishing
 
-**Status:** GitHub release workflow is prepared, but BuildSteward is NOT published on npm. It does not create your npm account, acquire an OTP, or configure trusted publisher settings on your behalf.
+**Status:** The first version, `@hamskillah/buildsteward@0.1.0`, has been published. The GitHub workflow is prepared for subsequent versions after Trusted Publishing is configured.
 
 This is a manual, source-verified workflow for releases **after the package exists and trusted publisher is configured**. It deliberately cannot auto-publish from normal pushes or pull requests.
 
@@ -45,7 +45,7 @@ Important: npm's documentation states that a new trusted publisher must complete
 2. Copy the exact full 40-character commit SHA from `main`.
 3. Open GitHub → Actions → **Publish npm (trusted, manual)** → Run workflow **on main** and paste the SHA.
 4. The job verifies the release gate variable, exact SHA, package metadata, automated tests and the packaged artifact, then uses npm OIDC to publish. GitHub OIDC requires `id-token: write`; no npm token should be placed in repository files.
-5. After a successful publish, verify package metadata on npm and test `npx --yes @hamskillah/buildsteward help` plus `setup --dry-run` in a fresh environment. Do not change README installation claims before this live test.
+5. After a successful publish, verify package metadata on npm and test `npx --yes @hamskillah/buildsteward help` plus `setup --dry-run` in a fresh environment. Record the registry install as verified only after this live test.
 
 If GitHub Actions says `ENEEDAUTH`, stop. Check the npm Trusted Publisher configuration, filename, allowed action and package ownership. **Do not paste tokens, OTPs, npmrc credentials, or account secrets into PRs/issues/ChatGPT.**
 
