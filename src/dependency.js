@@ -22,7 +22,7 @@ async function fromCache(filename, ttlHours, offline) {
   return null;
 }
 
-async function requestJSON(url, { method = 'GET', body, fetcher = fetch, validate = () => true }) {
+async function requestJSON(url, { method = 'GET', body, fetcher = fetch, validate = () => true, select = data => data }) {
   const response = await fetcher(url, { method, headers: { 'accept': 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const pieces = [];
@@ -34,7 +34,7 @@ async function requestJSON(url, { method = 'GET', body, fetcher = fetch, validat
   }
   const data = JSON.parse(Buffer.concat(pieces, size).toString('utf8'));
   if (!validate(data)) throw new Error('Invalid evidence response');
-  return data;
+  return select(data);
 }
 
 export async function fetchEvidence(root, key, url, options, { offline = false, fetcher = fetch, cacheHours = 24 } = {}) {

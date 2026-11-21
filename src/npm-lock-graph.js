@@ -9,6 +9,12 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const validName = name => typeof name === 'string' && name.length <= 214 && namePattern.test(name);
 const validLocation = location => location.length <= 512 && location.split('/').every(part => part && part !== '.' && part !== '..' && !part.includes('\\'));
 
+export function isRegistryTarball(identity, resolved) {
+  if (typeof resolved !== 'string') return false;
+  const basename = identity.name.split('/').at(-1);
+  return resolved === `https://registry.npmjs.org/${identity.name}/-/${basename}-${identity.version}.tgz`;
+}
+
 function resolveLocation(packages, from, name, peer) {
   const parent = from.lastIndexOf('/node_modules/');
   let directory = peer ? (parent < 0 ? '' : from.slice(0, parent)) : from;
