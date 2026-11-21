@@ -1,7 +1,8 @@
 import { readConfig } from './config.js';
 import { loadState, saveState, newId } from './state.js';
 
-const HIGH_RISK = new Set(['production_deploy', 'destructive_operation', 'external_spend', 'secret_access_escalation', 'mission_pivot']);
+export const HOST_ACTIONS = Object.freeze(['production_deploy', 'destructive_operation', 'external_spend', 'secret_access_escalation', 'mission_pivot']);
+const HIGH_RISK = new Set(HOST_ACTIONS);
 // Conservative, exact names for routine in-scope actions. Unknown actions must
 // never inherit blanket authorization from the word 'autonomous'.
 const ROUTINE = new Set(['local_test','inspect_repo','run_local_tests','local_build','scoped_edit','scoped_refactor','read_documentation','install_approved_dependency']);
@@ -10,11 +11,10 @@ export function actionPolicy(config, action, target, approvals = []) {
   const needsExplicit = HIGH_RISK.has(action) || config.execution.approvalRequired.includes(action);
   // Routine work does not need repetitive ACC, even in approval mode.
   if (!needsExplicit && ROUTINE.has(action)) return { allowed: true, basis: 'routine_scoped', action, target };
-  // Everything else, including unknown action names, requires a recorded ACC.
-  // The host must still enforce permissions at the actual tool boundary.
+  // Local records are never trusted authorization.
   const applicable = approvals.find(a => a.action === action && a.target === target && a.status === 'approved' && (!a.expiresAt || Date.parse(a.expiresAt) > Date.now()));
   if (needsExplicit) return { allowed: false, basis: 'trusted_host_authorization_required', recordedApprovalId: applicable?.id || null, action, target, note: 'Local approval files cannot authenticate human authorization. Enforce at host/tool boundary.' };
-  return applicable ? { allowed: true, basis: 'recorded_approval_untrusted', approvalId: applicable.id, action, target } : { allowed: false, basis: 'approval_required', action, target };
+  return { allowed: false, basis: 'approval_required', recordedApprovalId: applicable?.id || null, action, target };
 }
 
 export async function requestApproval(root, action, target, reason) {

@@ -22,6 +22,9 @@ try {
   const prefix=path.join(temp,'installed');
   await fs.mkdir(prefix);
   run(npm,['install','--ignore-scripts','--offline','--no-audit','--no-fund','--prefix',prefix,archive],{cwd:temp,env:{...process.env,npm_config_userconfig:path.join(temp,'empty-npmrc'),npm_config_cache:path.join(temp,'cache')}});
+  run(process.execPath, ['--input-type=module', '-e',
+    "import { createHostAuthority } from '@hamskillah/buildsteward/src/host-authority.js'; if (typeof createHostAuthority !== 'function') throw new Error('Missing host authority export');",
+  ], {cwd:prefix});
   const linked=path.join(prefix,'node_modules','.bin',process.platform==='win32'?'buildsteward.cmd':'buildsteward');
   if(!run(linked,['help'],{cwd:temp}).includes('BuildSteward')) throw new Error('Installed npm executable failed');
   if (process.platform !== 'win32') {
