@@ -22,9 +22,15 @@ A coding agent should behave like a professional product engineer: **understand 
 | Dependency evidence | Queries deps.dev **specific package version** + OSV, cached and offline-capable |
 | Steward Library | Eight small searchable engineering recipes with source references |
 | Checkpoints | Project state in `.buildsteward/checkpoint.json` |
+| Developer work ledger | Bounded task DAG, compact resume context, explicit verification and loop recovery |
+| Offline npm lockfile check | Manifest/lock consistency analysis, not a vulnerability scan |
 | Progress Sentinel | Detects consecutive identical no-progress fingerprints |
 | Optional memory graph | CLI adapter to existing `codebase-memory-mcp`, disabled by default |
 | Tests | Node built-in test runner; no npm runtime dependencies |
+
+## npm publication status
+
+The package `@hamskillah/buildsteward` has **not** been published to the npm registry yet. A new package needs an initial authenticated bootstrap by its npm scope owner before the usual Trusted Publisher configuration can be used. Subsequent releases can use our manual SHA-locked GitHub Actions OIDC workflow. See [release instructions](docs/RELEASE-NPM.md). Until a live npm install is verified, use the GitHub/local installation path below.
 
 ## Install BuildSteward
 
@@ -131,6 +137,11 @@ node bin/buildsteward.js route "Fix authentication bug"
 node bin/buildsteward.js library search "dependency security"
 node bin/buildsteward.js decide evaluate --file examples/decision.json
 node bin/buildsteward.js --root /path/to/project deps inspect --ecosystem npm --name react --version 18.2.0
+node bin/buildsteward.js --root /path/to/project deps project
+# For actual multi-step development tasks, see docs/DEVELOPER-WORKFLOW.md
+node bin/buildsteward.js --root /path/to/project work create --file examples/work-plan.json
+node bin/buildsteward.js --root /path/to/project work next
+node bin/buildsteward.js --root /path/to/project work context
 ```
 
 The CLI prints compact JSON by default. The `.buildsteward/` directory holds local config, decisions, approvals, caches, and checkpoints. Add it to a consuming project's `.gitignore` if needed, and never store secrets there.
@@ -157,17 +168,23 @@ buildsteward --root /path/to/project approvals approve APR-REPLACE_WITH_ID --act
 buildsteward --root /path/to/project guard --action production_deploy --target production
 ```
 
-**Security caveat:** CLI approval ledgers are **workflow state, not cryptographic proof that a human approved**. An unrestricted AI agent with shell access can edit files or run `approvals approve` itself. Secure execution requires permission enforcement at the agent host / tool boundary. Never claim this CLI prevents all unauthorized production actions.
+**Security caveat:** High-risk `guard` checks always deny locally, even after an approval record exists. A trusted host/tool must independently authorize privileged execution. CLI approval ledgers are **workflow state, not cryptographic proof that a human approved**. An unrestricted AI agent with shell access can edit files or run `approvals approve` itself. Secure execution requires permission enforcement at the agent host / tool boundary. Never claim this CLI prevents all unauthorized production actions.
+
+## Developer Execution Loop
+
+For multi-step features and repairs, BuildSteward now coordinates bounded engineering tasks through a dependency-aware work ledger. The **coding agent** still inspects, designs, implements and reviews the actual code; the ledger provides one active slice, compact cross-session context, tests and stuck-loop control. `work done` means implementation submitted, **not verified**. See [Developer Workflow](docs/DEVELOPER-WORKFLOW.md) and [example plan](examples/work-plan.json). Tiny tasks should skip this ledger.
 
 ## Dependency Intelligence
 
-`deps inspect` uses:
+`deps project` checks npm manifest vs lockfile consistency **offline**. It does not perform vulnerability analysis, license review or full transitive scanning. `deps inspect` uses:
 - [deps.dev v3 GetVersion](https://docs.deps.dev/api/v3/) for published version metadata, declared license identifiers and known *direct* advisory keys.
 - [OSV query](https://google.github.io/osv.dev/api/) for version-specific known vulnerabilities.
 
 Network errors, stale cache and unavailable fields are explicitly marked. It **does not** substitute for a complete lockfile/SBOM audit, supply-chain investigation, legal license analysis, local compatibility/build tests, or transitive vulnerability checking. Empty advisory results do not prove a package is safe.
 
 Decision candidate scoring uses **user/agent supplied ratings**, and mere presence of an evidence URL does not mean the claim was verified. The engine enforces gate completeness and tie/uncertainty rules but cannot replace skilled judgment. Inspect the evidence before choosing ratings.
+
+See [Trusted Host Authorization](docs/HOST-AUTHORIZATION.md) for the privileged-execution boundary.
 
 ## Optional Code Graph
 
