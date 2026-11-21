@@ -1,17 +1,11 @@
 import { readConfig } from './config.js';
 import { fetchEvidence } from './dependency.js';
-import { graphNpmLock } from './npm-lock-graph.js';
+import { graphNpmLock, isRegistryTarball } from './npm-lock-graph.js';
 
 const SOURCE = 'https://api.osv.dev/v1/querybatch';
 const LIMIT = 100;
 const MAX_IDS = 20;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-
-function isRegistryTarball(identity, resolved) {
-  if (typeof resolved !== 'string') return false;
-  const basename = identity.name.split('/').at(-1);
-  return resolved === `https://registry.npmjs.org/${identity.name}/-/${basename}-${identity.version}.tgz`;
-}
 
 function validResult(result) {
   if (!object(result) || !Object.keys(result).every(key => ['vulns', 'next_page_token'].includes(key))) return false;
