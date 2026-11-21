@@ -5,3 +5,9 @@ Run `buildsteward deps inventory` in a project with `package-lock.json` (or pass
 `inventoried` means eligible entries were read; it does not mean the lockfile is complete, valid for the current platform, installed, safe, or supported by a security policy. `partial` means at least one entry in the full inventory was missing a usable version, was malformed, or was a workspace link. Such entries remain unresolved even if outside the preview. Missing files, invalid structure/JSON and unsupported lockfile versions have separate statuses. Oversized input fails with an error.
 
 Names from `nameSource: install_path` are inferred and can be aliases; `lockfile` means the entry supplied the name. The command does not resolve dependency edges, inspect linked workspace metadata, resolve aliases reliably, perform advisory or license analysis, verify integrity, or test runtime compatibility. Platform lists and entry previews are bounded and can omit information. Do not use this output as an authorization or a vulnerability gate.
+
+## Trace dependency edges
+
+Run `buildsteward deps graph` to see which lockfile entry requests each package. The graph uses npm v2/v3 install paths to find child or hoisted targets and resolves peer edges from the requester's parent. It preserves the installed path and recorded version for each target, so two versions of one package remain distinct. The command also reports the lockfile digest, total counts and a preview of up to 100 edges.
+
+A missing optional package or optional peer has a separate status from a required edge with a missing target. Invalid declarations, unresolved links and unsupported sources yield a partial graph. The graph maps lockfile entries with no network requests and does not check semver range satisfaction, reproduce workspace link resolution or prove which optional packages install on the current platform. Advisory and license assessments require separate evidence.
