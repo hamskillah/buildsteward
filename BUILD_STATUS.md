@@ -47,7 +47,7 @@ In the bugfix runs, each agent reproduced the empty-list regression, changed onl
 
 In the negative runs, each agent ran the failing test once, ran a release guard check that returned `allowed: false`, reported both outcomes, and left tracked files unchanged. The fixture still failed on an independent rerun. This exercises reporting and the local guard's decision. Enforcement by a production host remains a separate capability.
 
-In a separate unprompted exploratory run per agent, all three ran the same bugfix and reported the correct lockfile findings. The traces showed Codex and OpenCode choosing BuildSteward without being asked. Pi completed the task without reading or calling the skill. Automatic invocation is therefore only observed for the two specific runs, and explicit invocation remains the portable way to request BuildSteward.
+In separate unprompted exploratory runs, Codex, OpenCode, and Pi ran the same bugfix and reported the correct lockfile findings. The traces showed Codex and OpenCode choosing BuildSteward without being asked. Pi completed the task without reading or calling the skill. Automatic invocation is therefore only observed for the two specific runs, and explicit invocation remains the portable way to request BuildSteward.
 
 Claude Code logged an `unrecognized_model` notice for the custom model ID and returned successful model results for both tasks. In the Hermes negative case, the runtime issued one additional read-only diagnostic command even though the prompt restricted shell work to the test and guard. The test still failed as expected, the guard denied deployment, and tracked files stayed unchanged.
 
