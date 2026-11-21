@@ -41,6 +41,39 @@ node .agents/skills/buildsteward/runtime/bin/buildsteward.js library search "dat
 
 For Claude Code or Cursor use their `.claude/skills/` or `.cursor/skills/` location respectively. For a global installation, use the corresponding path under your home directory.
 
+## Pi and Hermes Agent
+
+Pi and Hermes can use BuildSteward via the Skills CLI:
+
+```bash
+# In a project you trust; use --approve for a headless Pi run.
+npx skills add hamskillah/buildsteward --skill buildsteward -a pi -y
+
+# Install for Hermes Agent and confirm it is enabled.
+npx skills add hamskillah/buildsteward --skill buildsteward -a hermes-agent -g -y --copy
+hermes skills list
+```
+
+Ask the agent to use BuildSteward in its next session. These installs provide the skill. For deterministic CLI commands, use a separate copy of the CLI from source or point Hermes at a full project's existing BuildSteward bundle through [external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills). Keep one installer per target directory.
+
+## Claude Code with an OpenCode Go model
+
+Install the Claude Code target from the project:
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents claude --yes
+```
+
+In a shell that already holds your OpenCode Go key as `OPENCODE_GO_API_KEY`, scope the custom backend to the Claude invocation:
+
+```bash
+ANTHROPIC_BASE_URL=https://opencode.ai/inference/go/anthropic \
+ANTHROPIC_AUTH_TOKEN="$OPENCODE_GO_API_KEY" \
+claude --model deepseek-v4.1-flash
+```
+
+Use a session without a conflicting native Claude login or `ANTHROPIC_API_KEY`. See the [OpenCode Go instructions for Claude Code](https://opencode.ai/docs/console/harnesses/claude-code/#go) and the [verified agent matrix](../BUILD_STATUS.md).
+
 ## Diagnostics
 
 ```bash

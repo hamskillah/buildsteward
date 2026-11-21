@@ -16,14 +16,53 @@ BuildSteward has a working **portable Agent Skill, local Cortex CLI, guided inst
 
 - Agent discovery was verified with Codex CLI 0.172.0-alpha.2 (`skills/list` reported BuildSteward enabled) and OpenCode 1.19.6 (`opencode debug skill --pure` listed the installed skill). The Skills CLI 1.9.0 installed from the public GitHub repository and listed Codex, OpenCode, and Claude Code targets.
 
+## InstaBox verification
+
+A fresh Linux guest at commit `a29efb3` passed all 43 tests, the isolated tarball installer checks, and release preflight on Node 22.23.3 and npm 10.9.9.
+
+OpenCode 1.19.6 with `opencode/deepseek-v4.1-flash-free` completed an explicit BuildSteward activation smoke test. The event log showed a successful skill load, a successful bundled `inspect` call, and an answer matching the package name returned by the CLI.
+
+A separate JavaScript empty-array regression started with failing tests in two fresh projects. Each run allowed only the fixture edit, focused reads, and the test command. The skill arm explicitly requested BuildSteward. Both produced independently verified passing tests.
+
+| Single run per arm | Input tokens | Output tokens | Cached reads | Seconds |
+|---|---:|---:|---:|---:|
+| Baseline | 4,596 | 497 | 30,848 | 14 |
+| Skill only | 5,751 | 589 | 43,008 | 12 |
+
+The runtime reported $0 model cost in both arms. The skill arm used more tokens for this small task. A single prompt pair cannot establish a general performance or token-efficiency trend.
+
+### Authenticated cross-agent checks
+
+The same two tasks ran in fresh project fixtures on InstaBox against commit `a29efb3`. Each run explicitly requested BuildSteward. OpenCode, Pi, Claude Code, and Hermes used OpenCode Go with DeepSeek V4.1 Flash. Claude Code used the Go Anthropic Messages gateway with a custom model ID. Codex used a ChatGPT-authenticated session.
+
+| Agent | Skill load evidence | Bugfix and offline lockfile | Read-only negative case |
+|---|---|---|---|
+| Codex CLI 0.171.0 | Read installed `SKILL.md` | Pass | Pass |
+| OpenCode 1.19.6 | Successful native `skill` tool call | Pass | Pass |
+| Pi 1.5.2 | Read installed `SKILL.md` with project trust enabled | Pass | Pass |
+| Claude Code 2.1.330 | Native `Skill` tool | Pass | Pass |
+| Hermes Agent `a3b993b9` | Native `skill_view` tool | Pass | Correct result with an extra read-only command |
+
+In the bugfix runs, each agent reproduced the empty-list regression, changed only `totals.js` among tracked files, and ran the tests again. Independent reruns passed both tests. The agent traces included both dependency CLI calls and the reports identified `removed-pkg` and nested `nested-pkg@2.0.0`, with advisory coverage outside the scope of the offline commands.
+
+In the negative runs, each agent ran the failing test once, ran a release guard check that returned `allowed: false`, reported both outcomes, and left tracked files unchanged. The fixture still failed on an independent rerun. This exercises reporting and the local guard's decision. Enforcement by a production host remains a separate capability.
+
+In separate unprompted exploratory runs, Codex, OpenCode, and Pi ran the same bugfix and reported the correct lockfile findings. The traces showed Codex and OpenCode choosing BuildSteward without being asked. Pi completed the task without reading or calling the skill. Automatic invocation is therefore only observed for the two specific runs, and explicit invocation remains the portable way to request BuildSteward.
+
+Claude Code logged an `unrecognized_model` notice for the custom model ID and returned successful model results for both tasks. In the Hermes negative case, the runtime issued one additional read-only diagnostic command even though the prompt restricted shell work to the test and guard. The test still failed as expected, the guard denied deployment, and tracked files stayed unchanged.
+
+Hermes consumed the installed BuildSteward skill from its configured skill directory and called the project CLI. The Skills CLI `hermes-agent` target also installed the skill into an isolated Hermes home, where `hermes skills list` reported it enabled.
+
+Pi used a skill-only install plus the standalone CLI. Headless Pi discovered the project skill with `--approve` on the controlled fixture and skipped it when project trust was unresolved. Keep skill-only and bundled installs in separate project fixtures when they target the same `.agents/skills/buildsteward` directory.
+
 ## Not verified or not implemented
 
 - npm registry publication: npm publisher login was verified and the package dry run passed. The package is held for further build and agent validation.
-- Model tasks using the skill and real Claude Code/Cursor discovery remain unverified.
+- An authenticated Cursor run remains unverified. Automatic skill selection is not established across tasks or agents.
 - Live deps.dev/OSV network access and real Codebase Memory MCP provider: unavailable to offline local tests.
 - Trusted host-enforced approval, credentials isolation, production deployment, security pentest, comprehensive transitive dependency/lockfile vulnerability scanning.
 - Independent end-to-end LLM task execution: developer loop coordinates work performed by the coding agent, but does not launch models or execute arbitrary project plans autonomously.
-- Cross-model token and correctness benchmarking is pending. Assisted scenarios covered repeated failures, stale local approval and offline dependency inventory.
+- Cross-model token and correctness benchmarking is pending. The OpenCode comparison above is one exploratory run per arm. Assisted scenarios covered repeated failures, stale local approval and offline dependency inventory.
 
 ## Trust boundaries
 
