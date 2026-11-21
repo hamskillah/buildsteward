@@ -1,0 +1,48 @@
+# Manual-only, intentionally gated trusted npm release. No npm token in GitHub.
+name: Publish npm (trusted, manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 'Full reviewed commit SHA currently at main (40 hex characters)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Verify explicit publisher readiness and commit lease
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          READY: ${{ vars.NPM_TRUSTED_PUBLISHING_READY }}
+        run: |
+          test "$READY" = 'true' || { echo 'Configure npm trusted publisher and protected npm-publish environment first'; exit 1; }
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Expected SHA must be 40 lowercase hex characters'; exit 1; }
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)" || { echo 'main differs from reviewed SHA'; exit 1; }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Use modern npm CLI for OIDC publishing
+        run: npm install -g npm@^11.5.1
+      - name: Check package metadata and working tree
+        run: node scripts/release-preflight.js
+      - name: Verify source and packaged artifact
+        run: npm run check
+      - name: Review exact package contents
+        run: npm publish --dry-run --access public
+      - name: Publish with trusted OIDC identity
+        run: npm publish --access public

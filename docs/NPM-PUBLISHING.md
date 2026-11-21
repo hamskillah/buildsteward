@@ -1,3 +1,5 @@
+> The current, reviewed publishing procedure is in [RELEASE-NPM.md](RELEASE-NPM.md). The workflow is manual and requires npm Trusted Publisher configuration.
+
 # npm publishing checklist (not executed)
 
 The repository is set up to produce the scoped package `@hamskillah/buildsteward`. **Publication has not happened.** A verified npm publisher must complete these steps. Do not upload an npm token or one-time password to a public issue, PR, or AI conversation.
