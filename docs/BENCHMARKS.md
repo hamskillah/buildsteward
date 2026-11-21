@@ -48,7 +48,7 @@ The machine-readable report contains independent task scores, tool counts, obser
 
 An OpenCode 1.19.6 pilot with `opencode/deepseek-v4.1-flash-free` on 2026-11-21 reached the provider but was rejected for exhausted free usage. It produced no task or token comparison.
 
-The original pilot covers a regression fix and offline dependency assessment. Its fixture checks validate the grader. Evidence about whether the skill improves agent outcomes comes from matched live runs across models and tasks. See [prior exploratory results](../BUILD_STATUS.md#instabox-verification).
+The original pilot covers a regression fix and offline dependency assessment. Its fixture checks validate the grader. Evidence about whether the skill improves agent outcomes comes from matched live runs across models and tasks. See [verified agent results](../BUILD_STATUS.md#agent-compatibility).
 
 ## OpenCode Go pilot results
 

@@ -1,150 +1,68 @@
-# BuildSteward Installation & Operations
-
-BuildSteward works as (1) a portable, lightweight Agent Skill or (2) a skill bundled with its local Cortex CLI. The npm CLI requires **Node.js 22+**. The GitHub source route also requires Git.
-
-## npm registry installation
-
-```bash
-npm install -g @hamskillah/buildsteward
-```
-
-Run `buildsteward` in your project terminal. The console offers project setup, inspection and an installation check. Direct commands such as `buildsteward doctor` work without opening the console and retain their JSON output.
-
-### Setup without the console
-
-```bash
-# Run within the target project directory
-buildsteward setup
-```
-
-By default, with a TTY it detects coding-agent executables when possible and asks which targets to install. If none is on PATH, you can still enter supported agent names manually. In headless mode with no detected agent, pass `--agents` explicitly. On CI/headless machines, provide explicit flags:
-
-```bash
-buildsteward setup \
-  --scope project --agents opencode,codex --mode approval --graph off --yes
-```
-
-Available agents: `opencode`, `codex`, `claude`, `cursor`. `--agents` accepts a comma-separated list or `auto` to detect executables on the current PATH. Supported scopes: `project` (default) and `global`. Modes: `approval` (default) and `autonomous`. Optional graph: `off` (default), `auto`, `on`. Graph mode only controls configuration; Codebase Memory MCP must be installed/indexed separately.
-
-Before installing, inspect planned writes with `setup --dry-run --agents codex`. A project install with the runtime creates `.buildsteward/config.json` if absent, but never overwrites existing project policy. Global install does not create project configuration. Setup copies the skill and bundled runtime directly under the agent's skills folder, so it does not need a globally linked npm package afterward.
-
-To run Cortex tools with a project-level OpenCode/Codex installation:
-
-```bash
-node .agents/skills/buildsteward/runtime/bin/buildsteward.js inspect
-node .agents/skills/buildsteward/runtime/bin/buildsteward.js library search "database"
-```
-
-For Claude Code or Cursor use their `.claude/skills/` or `.cursor/skills/` location respectively. For a global installation, use the corresponding path under your home directory.
-
-## Claude Code with an OpenCode Go model
-
-Install the Claude Code target from the project:
-
-```bash
-buildsteward setup --agents claude --yes
-```
-
-In a shell that already holds your OpenCode Go key as `OPENCODE_GO_API_KEY`, scope the custom backend to the Claude invocation:
-
-```bash
-ANTHROPIC_BASE_URL=https://opencode.ai/inference/go/anthropic \
-ANTHROPIC_AUTH_TOKEN="$OPENCODE_GO_API_KEY" \
-claude --model deepseek-v4.1-flash
-```
-
-Use a session without a conflicting native Claude login or `ANTHROPIC_API_KEY`. See the [OpenCode Go instructions for Claude Code](https://opencode.ai/docs/console/harnesses/claude-code/#go) and the [verified agent matrix](../BUILD_STATUS.md).
+# Installing BuildSteward
 
 ## GitHub source and skill-only installs
 
-### Run from a GitHub checkout
-
-```bash
-git clone https://github.com/hamskillah/buildsteward.git "$HOME/buildsteward"
-```
-
-From your target project directory, run the checked-out CLI:
-
-```bash
-node "$HOME/buildsteward/bin/buildsteward.js"
-```
-
-### GitHub skill-only installation
-
-Requires Node.js 22.20 or later for Skills CLI 1.9.0.
+From the project directory, using Node.js 22.20 or later:
 
 ```bash
 npx skills add hamskillah/buildsteward --skill buildsteward
 ```
 
-Open a fresh coding-agent session after installation. Check installed files with `npx skills list`. In OpenCode, `opencode debug skill` lists the skills discovered by the runtime. For a headless, single-agent install, append `-a codex -y` or replace `codex` with `opencode` or `claude-code`. Add `-g` for an account-wide install.
+Choose your agent and start a fresh session. Ask it to use BuildSteward on your task. Use `npx skills list` to check the installed files. OpenCode can show discovered skills with `opencode debug skill`.
 
-The Skills CLI manages installation, updates and removal for this mode. BuildSteward does not claim ownership of installations created by another installer. This mode contains instructions and references but **does not** include the executable Decision/Dependency/Memory CLI runtime.
+For a headless install, append `-a codex -y` and replace `codex` with the Skills CLI target you need, such as `opencode`, `claude-code`, or `pi`. Pi headless runs may need project trust via `--approve`. For Hermes, use `-a hermes-agent -g -y --copy` and check `hermes skills list`. Use the Skills CLI for updates and removal of skills it installed.
 
-### Pi and Hermes Agent
+### Run from a GitHub checkout
 
-Pi and Hermes can use BuildSteward via the Skills CLI:
+Clone the repository, then run the checkout's CLI from your project:
 
 ```bash
-# In a project you trust; use --approve for a headless Pi run.
-npx skills add hamskillah/buildsteward --skill buildsteward -a pi -y
-
-# Install for Hermes Agent and confirm it is enabled.
-npx skills add hamskillah/buildsteward --skill buildsteward -a hermes-agent -g -y --copy
-hermes skills list
+git clone https://github.com/hamskillah/buildsteward.git "$HOME/buildsteward"
+node "$HOME/buildsteward/bin/buildsteward.js"
 ```
 
-Ask the agent to use BuildSteward in its next session. These installs provide the skill. For deterministic CLI commands, use a separate copy of the CLI from source or point Hermes at a full project's existing BuildSteward bundle through [external skill directories](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills). Keep one installer per target directory.
+See the [dependency command reference](DEPENDENCY-INVENTORY.md) for the current checkout.
 
-## Diagnostics
+## npm registry installation
 
-From a source checkout, run `node bin/buildsteward.js help` for the command reference. For an installed bundle, run its CLI with `help`.
+Requires Node.js 22 or later:
 
 ```bash
-buildsteward doctor --agents opencode,codex
-buildsteward doctor --scope global --agents claude
+npm install -g @hamskillah/buildsteward
 ```
 
-`doctor` reports whether skill files, ownership markers and bundled runtime exist and match BuildSteward's recorded fingerprint. Use `doctor --strict` in automated checks: it exits nonzero when a requested install is absent, tampered or incomplete. It does **not** prove agent activation. Check your agent's skills list or start a fresh session. Some host agents use skills permissions and enablement controls.
-
-## Managed skill-only installation
-
-If you want the BuildSteward installer to manage the skill without copying the runtime, use `--skill-only`. The current GitHub source also leaves project configuration untouched in this mode. It can still be updated and removed by the same installer. If you only need the skill and no BuildSteward CLI at all, prefer Skills CLI installation above.
+Run `buildsteward` from your project and choose **Install or update the skill**. For a direct, non-interactive setup and verification:
 
 ```bash
-buildsteward setup --agents codex --skill-only --yes
+buildsteward setup --agents codex --yes
 buildsteward doctor --agents codex --strict
 ```
 
-## Updates and rollback
+Installer targets are `codex`, `opencode`, `claude`, and `cursor`. Use `--scope global` for account-wide installation and `--skill-only` to omit the bundled CLI. Use the same installer for a given skill directory. A full project install creates project settings only if they are absent. The current source also skips creating project settings for a skill-only install.
 
-Use the same installer with the same scope/agents to update managed skills. The current GitHub source leaves identical managed content in place and creates no backup. Managed content is fingerprinted. If it was edited by a user, the installer refuses replacement; pass `--force` only if you have reviewed the changes and want them saved to a backup first.
+`doctor` checks files and fingerprints. Check activation in a fresh agent session. Run `buildsteward help` for commands including `inspect`, `deps inventory`, and `work status`.
 
-```bash
-buildsteward setup --agents codex,opencode --yes
-buildsteward rollback --agents codex,opencode --dry-run
-buildsteward rollback --agents codex,opencode
-```
+### Updates, rollback, and removal
 
-Backups are stored under `.buildsteward/skill-backups` (project) or `~/.config/buildsteward/skill-backups` (global). Only previous BuildSteward-managed backups can be restored. Rollback requires a backup; it does not arbitrarily download old versions or replace installations from another tool.
-
-## Uninstall
+Rerun setup with the same scope and agent selection to update. The current source skips an identical installation. To preview the operation, append `--dry-run`.
 
 ```bash
-buildsteward uninstall --agents codex,opencode --dry-run
-buildsteward uninstall --agents codex,opencode
+buildsteward rollback --agents codex
+buildsteward uninstall --agents codex
 ```
 
-The command **preserves project settings, checkpoints and decisions**. It moves the managed skill into a recoverable backup. Unmanaged skill folders cannot be removed by BuildSteward. Skills installed with `npx skills add` must be removed via the Skills CLI instead.
-
-## Safety and limitations
-
-- For repeatable installations, pin a package version on npm or a commit in a source checkout.
-- The setup installs content under explicitly selected user or project directories. It does not edit `~/.config/opencode/opencode.json`, Claude settings or agent tool permissions.
-- A skill file on disk cannot guarantee host activation or secure approval enforcement. `approval` records are workflow metadata and not a substitute for host-enforced permissions.
-- No network is used by the installer itself. Optional `deps inspect` uses API calls when requested.
-- Full setup is currently validated with local filesystem and CLI integration tests, not across every real host-agent UI.
+Rollback uses an existing managed backup. Uninstall moves managed skill files to a backup and preserves project settings and work history. Replacing modified managed files requires `--force` and saves a backup.
 
 ### Optional Codebase Memory provider
 
-Enable the graph with `buildsteward config set memory.codeGraph.mode on` after installing and indexing the repository with Codebase Memory MCP. Use `buildsteward graph status` to check whether the provider responds. Use `buildsteward graph search "SymbolName"` to search the single index whose root matches the current checkout. If the list is incomplete, there are multiple matches, or you are running from a subdirectory, provide the index name with `--project NAME`. The graph command never indexes or changes a project. Check graph results against the source files before relying on them.
+After installing Codebase Memory MCP and indexing the project:
+
+```bash
+buildsteward config set memory.codeGraph.mode on
+buildsteward graph status
+buildsteward graph search "SymbolName"
+```
+
+Current source selects the unique index matching the checkout. Use `--project NAME` if the match is unavailable or ambiguous. Verify results against the source files.
+
+[Agent test results](../BUILD_STATUS.md) · [Developer workflow](DEVELOPER-WORKFLOW.md) · [Security](../SECURITY.md)
