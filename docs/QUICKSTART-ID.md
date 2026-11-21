@@ -65,6 +65,6 @@ npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
   --scope project --agents opencode,codex --mode approval --graph off --yes
 ```
 
-Periksa dulu dengan opsi `--dry-run`; jalankan `doctor --agents opencode,codex` setelah instalasi. Runtime Cortex disalin bersama skill, sehingga `npm link` **tidak diperlukan**. Jika Codebase Memory MCP belum terpasang, tetap gunakan `--graph off`.
+Periksa dulu dengan opsi `--dry-run`; jalankan `doctor --agents opencode,codex --strict` setelah instalasi. Gunakan `--skill-only` jika ingin memasang skill tanpa menyertakan Cortex CLI. Runtime Cortex disalin bersama skill, sehingga `npm link` **tidak diperlukan**. Jika Codebase Memory MCP belum terpasang, tetap gunakan `--graph off`.
 
 Lihat [panduan instalasi lengkap](INSTALLATION.md). Instalasi dari Skills CLI hanya memasang skill, bukan runtime Cortex. Instalasi penuh tidak menjamin host agent langsung mengaktifkan skill; periksa daftar skill di agent kamu.

@@ -47,7 +47,7 @@ Requires **Node.js 22+**, Git and npm. Until an npm package is published, invoke
 npx --yes --package=github:hamskillah/buildsteward buildsteward setup
 ```
 
-The interactive wizard asks which detected coding agents to configure, whether to install at project or global scope, and (at project scope) the autonomy and optional graph mode. It never downloads or activates Codebase Memory MCP itself.
+The interactive wizard proposes detected coding agents and allows explicit selection even if none are found on PATH, whether to install at project or global scope, and (at project scope) the autonomy and optional graph mode. It never downloads or activates Codebase Memory MCP itself.
 
 Automation / headless setup with explicit choices:
 
@@ -98,9 +98,19 @@ buildsteward uninstall --scope project --agents codex,opencode
 
 For a CLI temporarily executed via `npx`, use that same full `npx --yes --package=github:hamskillah/buildsteward buildsteward` prefix, not a bare `buildsteward` unless it is on `PATH`.
 
-Setup **does not overwrite another tool's skill installation**. Replacing a managed skill that users edited requires `--force`; previous files are backed up rather than discarded. `uninstall` does not delete the project's `.buildsteward/config.json`, project decisions, or checkpoint. `doctor` reports files and runtime presence; it cannot prove that an agent actually loaded or obeyed the skill.
+Setup **does not overwrite another tool's skill installation**. Replacing a managed skill that users edited requires `--force`; previous files are backed up rather than discarded. `uninstall` does not delete the project's `.buildsteward/config.json`, project decisions, or checkpoint. `doctor` reports files and runtime presence; `doctor --strict` exits with an error for missing or modified installs (useful in CI). Neither mode proves an agent actually loaded or obeyed the skill.
 
-See [Installation Guide](docs/INSTALLATION.md) for details, recovery, and local/offline setup.
+See [Installation Guide](docs/INSTALLATION.md) for details, recovery, and local/offline setup. Review [Release Quality Gates](docs/RELEASE-QUALITY.md) for the distinction between tested installation files and actual model/agent behavior.
+
+### Optional CLI skill-only setup
+
+If you need a managed skill installation without a bundled Cortex runtime, pass `--skill-only` to `buildsteward setup`. For a pure skill experience without the BuildSteward CLI, prefer `npx skills add` instead. These installers own different files; do not update a Skills CLI installation with the BuildSteward installer.
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents codex --skill-only --yes
+```
+
+**Installation guarantees:** `doctor --strict` verifies files and install fingerprints, not host activation. The installer does not automatically enable an agent's permission policies, and approval ledger entries are not trusted authorization tokens. Runtime directory scanning is intentionally not a substitute for checking your actual agent configuration.
 
 ## Running the local CLI
 

@@ -144,11 +144,14 @@ export async function installationDoctor({root=process.cwd(),home=os.homedir(),s
   const statuses=await Promise.all(chosen.map(async agent=>{
     const p=installTarget(agent,scope,root,home);
     const found=await inspectTarget(p);
-    return {agent,path:p,...found,skillExists:await exists(path.join(p,'SKILL.md')),runtimeExists:await exists(path.join(p,'runtime','bin','buildsteward.js'))};
+    const skillExists=await exists(path.join(p,'SKILL.md'));
+    const runtimeExists=await exists(path.join(p,'runtime','bin','buildsteward.js'));
+    const healthy=found.status==='managed' && skillExists && (found.marker?.withRuntime===false || runtimeExists);
+    return {agent,path:p,...found,skillExists,runtimeExists,healthy};
   }));
   let config='not-configured';
   if(scope==='project') { try {const c=await readConfig(root);config={autonomy:c.autonomy.mode,graph:c.memory.codeGraph.mode};}catch(e){config=e.message;} }
-  return {scope,project:path.resolve(root),node:process.version,config,agents:statuses,notes:['Skill file presence does not prove host activation. Check the agent skill list.','Approval records cannot enforce permissions on unrestricted shell tools.']};
+  return {scope,project:path.resolve(root),node:process.version,config,healthy:statuses.every(s=>s.healthy),agents:statuses,notes:['Skill file presence does not prove host activation. Check the agent skill list.','Approval records cannot enforce permissions on unrestricted shell tools.']};
 }
 
 export async function uninstallInstallation({root=process.cwd(),home=os.homedir(),scope='project',agents,force=false,dryRun=false}={}) {

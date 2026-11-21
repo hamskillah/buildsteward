@@ -17,7 +17,7 @@ The Skills CLI manages installation, updates and removal for this mode. BuildSte
 npx --yes --package=github:hamskillah/buildsteward buildsteward setup
 ```
 
-By default, with a TTY it detects available coding-agent executables and offers interactive selections. On CI/headless machines, provide explicit flags:
+By default, with a TTY it detects coding-agent executables when possible and asks which targets to install. If none is on PATH, you can still enter supported agent names manually. In headless mode with no detected agent, pass `--agents` explicitly. On CI/headless machines, provide explicit flags:
 
 ```bash
 npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
@@ -44,7 +44,16 @@ buildsteward doctor --agents opencode,codex
 buildsteward doctor --scope global --agents claude
 ```
 
-`doctor` reports whether skill files, ownership markers and bundled runtime exist and match BuildSteward's recorded fingerprint. It does **not** prove agent activation. Check your agent's skills list or start a fresh session. Some host agents use skills permissions and enablement controls.
+`doctor` reports whether skill files, ownership markers and bundled runtime exist and match BuildSteward's recorded fingerprint. Use `doctor --strict` in automated checks: it exits nonzero when a requested install is absent, tampered or incomplete. It does **not** prove agent activation. Check your agent's skills list or start a fresh session. Some host agents use skills permissions and enablement controls.
+
+## Managed skill-only installation
+
+If you want the BuildSteward installer to manage the skill without copying the Cortex runtime, use `--skill-only`. It can still be updated and removed by the same installer. If you only need the skill and no BuildSteward CLI at all, prefer Skills CLI installation above.
+
+```bash
+buildsteward setup --agents codex --skill-only --yes
+buildsteward doctor --agents codex --strict
+```
 
 ## Updates and rollback
 

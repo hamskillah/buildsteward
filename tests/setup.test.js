@@ -120,3 +120,33 @@ test('rollback restores a previous managed skill while backing up current versio
     assert.equal((await installationDoctor({root,home,agents:'codex'})).agents[0].status,'managed');
   });
 });
+
+test('doctor strict exits nonzero on missing or tampered skill and passes on skill-only install', async()=>{
+  await temporary(async ({root,home})=>{
+    const cli=path.resolve('bin/buildsteward.js');
+    const env={...process.env,HOME:home};
+    const run=(...args)=>spawnSync(process.execPath,[cli,'--root',root,...args],{encoding:'utf8',env,timeout:5000});
+    assert.equal(run('doctor','--agents','claude','--strict').status,1);
+    assert.equal(run('setup','--agents','claude','--skill-only','--yes').status,0);
+    const report=JSON.parse(run('doctor','--agents','claude','--strict').stdout).result;
+    assert.equal(report.healthy,true);
+    assert.equal(report.agents[0].runtimeExists,false);
+    const installed=installTarget('claude','project',root,home);
+    await fs.appendFile(path.join(installed,'SKILL.md'),'\nuser edit');
+    const failed=run('doctor','--agents','claude','--strict');
+    assert.equal(failed.status,1);
+    assert.match(failed.stderr,/Installation check failed/);
+    assert.equal(JSON.parse(run('doctor','--agents','claude').stdout).result.healthy,false);
+  });
+});
+
+test('auto detection without installed tools requests explicit agent selection in headless mode',async()=>{
+  await temporary(async ({root,home,temp})=>{
+    const result=spawnSync(process.execPath,[path.resolve('bin/buildsteward.js'),'--root',root,'setup','--yes'],{
+      encoding:'utf8',env:{...process.env,PATH:path.join(temp,'empty'),HOME:home},timeout:5000
+    });
+    assert.equal(result.status,1);
+    assert.match(result.stderr,/Pass --agents/);
+    assert.deepEqual(await fs.readdir(root),[]);
+  });
+});
