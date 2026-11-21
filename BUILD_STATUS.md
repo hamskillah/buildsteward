@@ -16,14 +16,31 @@ BuildSteward has a working **portable Agent Skill, local Cortex CLI, guided inst
 
 - Agent discovery was verified with Codex CLI 0.172.0-alpha.2 (`skills/list` reported BuildSteward enabled) and OpenCode 1.19.6 (`opencode debug skill --pure` listed the installed skill). The Skills CLI 1.9.0 installed from the public GitHub repository and listed Codex, OpenCode, and Claude Code targets.
 
+## InstaBox verification
+
+A fresh Linux guest at commit `a29efb3` passed all 43 tests, the isolated tarball installer checks, and release preflight on Node 22.23.3 and npm 10.9.9.
+
+OpenCode 1.19.6 with `opencode/deepseek-v4.1-flash-free` completed an explicit BuildSteward activation smoke test. The event log showed a successful skill load, a successful bundled `inspect` call, and an answer matching the package name returned by the CLI.
+
+A separate JavaScript empty-array regression started with failing tests in two fresh projects. Each run allowed only the fixture edit, focused reads, and the test command. The skill arm explicitly requested BuildSteward. Both produced independently verified passing tests.
+
+| Single run per arm | Input tokens | Output tokens | Cached reads | Seconds |
+|---|---:|---:|---:|---:|
+| Baseline | 4,596 | 497 | 30,848 | 14 |
+| Skill only | 5,751 | 589 | 43,008 | 12 |
+
+The runtime reported $0 model cost in both arms. The skill arm used more tokens for this small task. A single prompt pair cannot establish a general performance or token-efficiency trend.
+
+Codex CLI 0.171.0 listed the project skill as enabled and successfully ran a sandboxed `/bin/true`. Codex and Claude Code 2.1.330 had no session login in the test guest, so neither completed an authenticated model run.
+
 ## Not verified or not implemented
 
 - npm registry publication: npm publisher login was verified and the package dry run passed. The package is held for further build and agent validation.
-- Model tasks using the skill and real Claude Code/Cursor discovery remain unverified.
+- Authenticated model tasks on Codex and Claude Code, and Claude Code/Cursor discovery, remain unverified.
 - Live deps.dev/OSV network access and real Codebase Memory MCP provider: unavailable to offline local tests.
 - Trusted host-enforced approval, credentials isolation, production deployment, security pentest, comprehensive transitive dependency/lockfile vulnerability scanning.
 - Independent end-to-end LLM task execution: developer loop coordinates work performed by the coding agent, but does not launch models or execute arbitrary project plans autonomously.
-- Cross-model token and correctness benchmarking is pending. Assisted scenarios covered repeated failures, stale local approval and offline dependency inventory.
+- Cross-model token and correctness benchmarking is pending. The OpenCode comparison above is one exploratory run per arm. Assisted scenarios covered repeated failures, stale local approval and offline dependency inventory.
 
 ## Trust boundaries
 
