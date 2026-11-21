@@ -1,4 +1,4 @@
-> The current, reviewed publishing procedure is in [RELEASE-NPM.md](RELEASE-NPM.md). The workflow is manual and requires npm Trusted Publisher configuration.
+> The current, reviewed publishing procedure is in [RELEASE-NPM.md](RELEASE-NPM.md). The workflow is manual and requires npm Trusted Publisher configuration **after an initial authenticated package bootstrap**.
 
 # npm publishing checklist (not executed)
 
