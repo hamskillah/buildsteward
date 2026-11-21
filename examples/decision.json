@@ -1,0 +1,19 @@
+{
+  "topic": "Local persistence for a small single-node tool",
+  "tier": "architectural",
+  "profile": "general",
+  "candidates": [
+    {
+      "name": "SQLite",
+      "gates": {"compatible": true, "licenseAllowed": true, "securityAcceptable": true},
+      "evidence": ["https://www.sqlite.org/whentouse.html"],
+      "ratings": {"fit": 5, "maintenance": 5, "complexity": 5, "operational": 5}
+    },
+    {
+      "name": "PostgreSQL",
+      "gates": {"compatible": true, "licenseAllowed": true, "securityAcceptable": true},
+      "evidence": ["https://www.postgresql.org/docs/"],
+      "ratings": {"fit": 4, "maintenance": 5, "complexity": 3, "operational": 3}
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "goal": "Deliver the authentication vertical slice",
+  "completed": ["Inspected auth routes and tests"],
+  "next": "Add an authenticated session regression test",
+  "blockers": [],
+  "changedFiles": [],
+  "verification": ["Repository inspection complete; tests not yet run"]
+}

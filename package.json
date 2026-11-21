@@ -1,0 +1,15 @@
+{
+  "name": "buildsteward-local",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first engineering judgment tooling for AI coding agents",
+  "engines": {"node": ">=22"},
+  "bin": {"buildsteward": "./bin/buildsteward.js"},
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check bin/buildsteward.js && node --test tests/*.test.js",
+    "smoke": "node bin/buildsteward.js help"
+  },
+  "files": ["bin", "src", "skills", "knowledge", "docs"]
+}
