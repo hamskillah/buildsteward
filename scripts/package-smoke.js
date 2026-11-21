@@ -24,8 +24,45 @@ try {
   run(npm,['install','--ignore-scripts','--offline','--no-audit','--no-fund','--prefix',prefix,archive],{cwd:temp,env:{...process.env,npm_config_userconfig:path.join(temp,'empty-npmrc'),npm_config_cache:path.join(temp,'cache')}});
   const linked=path.join(prefix,'node_modules','.bin',process.platform==='win32'?'buildsteward.cmd':'buildsteward');
   if(!run(linked,['help'],{cwd:temp}).includes('BuildSteward')) throw new Error('Installed npm executable failed');
-  run('tar',['-xzf',archive,'-C',temp]);
-  const pkg=path.join(temp,'package');
+  const pkg=path.join(prefix,'node_modules','@hamskillah','buildsteward');
+  const agents='opencode,codex,claude,cursor';
+  const layout={
+    project:['.agents/skills','.claude/skills','.cursor/skills'],
+    global:['.config/opencode/skills','.agents/skills','.claude/skills','.cursor/skills'],
+  };
+  for (const scope of ['project','global']) {
+    for (const skillOnly of [true,false]) {
+      const projectRoot=await fs.mkdtemp(path.join(temp,'layout-'));
+      const home=await fs.mkdtemp(path.join(temp,'home-'));
+      const options={cwd:projectRoot,env:{...process.env,HOME:home,USERPROFILE:home}};
+      const flags=['--scope',scope,'--agents',agents];
+      run(linked,['setup',...flags,'--yes',...(skillOnly?['--skill-only']:[])],options);
+      const check=()=>JSON.parse(run(linked,['doctor',...flags],options)).result;
+      const health=check();
+      if (!health.healthy || health.agents.length!==4 ||
+          health.agents.some(agent=>agent.runtimeExists===skillOnly)) {
+        throw new Error(`Incorrect installation layout for ${scope}, skill-only=${skillOnly}`);
+      }
+      const skillRoot=scope==='project'?projectRoot:home;
+      const skillPaths=layout[scope].map(directory=>path.join(skillRoot,directory,'buildsteward','SKILL.md'));
+      for (const skillPath of skillPaths) {
+        if (!(await fs.readFile(skillPath,'utf8')).includes('name: buildsteward')) {
+          throw new Error(`Missing skill content at ${skillPath}`);
+        }
+      }
+      run(linked,['uninstall',...flags],options);
+      for (const skillPath of skillPaths) {
+        const removed=await fs.stat(skillPath).then(()=>false,error=>{
+          if (error.code==='ENOENT') return true;
+          throw error;
+        });
+        if (!removed) throw new Error(`Uninstall left skill content at ${skillPath}`);
+      }
+      if (check().agents.some(agent=>agent.skillExists)) {
+        throw new Error(`Installed skill remains after uninstall in ${scope}`);
+      }
+    }
+  }
   const skill=await fs.readFile(path.join(pkg,'skills','buildsteward','SKILL.md'),'utf8');
   if(!skill.includes('name: buildsteward')) throw new Error('Skill missing from packaged artifact');
   const runtime=path.join(pkg,'bin','buildsteward.js');

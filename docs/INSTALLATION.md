@@ -4,9 +4,13 @@ BuildSteward works as (1) a portable, lightweight Agent Skill or (2) a skill bun
 
 ## Skill-only installation
 
+Requires Node.js 22.20 or later for Skills CLI 1.9.0.
+
 ```bash
 npx skills add hamskillah/buildsteward --skill buildsteward
 ```
+
+Open a fresh coding-agent session after installation. Check installed files with `npx skills list`. In OpenCode, `opencode debug skill` lists the skills discovered by the runtime. For a headless, single-agent install, append `-a codex -y` or replace `codex` with `opencode` or `claude-code`. Add `-g` for an account-wide install.
 
 The Skills CLI manages installation, updates and removal for this mode. BuildSteward does not claim ownership of installations created by another installer. This mode contains instructions and references but **does not** include the executable Decision/Dependency/Memory CLI runtime.
 
