@@ -34,6 +34,14 @@ try {
   if(!inspected.ok) throw new Error('Copied Cortex runtime is unusable');
   const doctor=JSON.parse(run(process.execPath,[runtime,'--root',project,'doctor','--agents','codex','--strict'],{cwd:pkg}));
   if(!doctor.ok || doctor.result.healthy!==true) throw new Error('Doctor did not validate packaged install');
+  // Verify the packed, installed Cortex actually contains the developer work engine.
+  const sample={goal:'Check packed work runtime',tasks:[{id:'docs',title:'Document setup',kind:'documentation',risk:'low',verification:'manual',dependsOn:[],acceptance:['Documentation checked']}]};
+  const plan=path.join(project,'sample-plan.json');
+  await fs.writeFile(plan,JSON.stringify(sample));
+  const created=JSON.parse(run(process.execPath,[installedRuntime,'--root',project,'work','create','--file',plan],{cwd:project}));
+  if(!created.ok || created.result.ready[0]!=='docs') throw new Error('Packed developer work engine did not initialize');
+  const context=JSON.parse(run(process.execPath,[installedRuntime,'--root',project,'work','context'],{cwd:project}));
+  if(context.result.task.id!=='docs') throw new Error('Packed developer work engine cannot resume');
   console.log(JSON.stringify({ok:true,artifact:metadata.filename,files:metadata.files?.length,bytes:metadata.size,isolatedSetup:true}));
 } finally {
   await fs.rm(temp,{recursive:true,force:true});

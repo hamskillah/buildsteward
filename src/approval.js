@@ -13,7 +13,8 @@ export function actionPolicy(config, action, target, approvals = []) {
   // Everything else, including unknown action names, requires a recorded ACC.
   // The host must still enforce permissions at the actual tool boundary.
   const applicable = approvals.find(a => a.action === action && a.target === target && a.status === 'approved' && (!a.expiresAt || Date.parse(a.expiresAt) > Date.now()));
-  return applicable ? { allowed: true, basis: 'recorded_approval', approvalId: applicable.id, action, target } : { allowed: false, basis: 'approval_required', action, target };
+  if (needsExplicit) return { allowed: false, basis: 'trusted_host_authorization_required', recordedApprovalId: applicable?.id || null, action, target, note: 'Local approval files cannot authenticate human authorization. Enforce at host/tool boundary.' };
+  return applicable ? { allowed: true, basis: 'recorded_approval_untrusted', approvalId: applicable.id, action, target } : { allowed: false, basis: 'approval_required', action, target };
 }
 
 export async function requestApproval(root, action, target, reason) {
