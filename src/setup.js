@@ -78,7 +78,10 @@ async function inspectTarget(dest) {
 async function makeStaging(dest, withRuntime) {
   const parent=path.dirname(dest);
   await fs.mkdir(parent,{recursive:true});
-  const stage=await fs.mkdtemp(path.join(parent,'.buildsteward-stage-'));
+  // Copy to a NEW child directory. Node 22/24/26 differ in how fs.cp handles
+  // `errorOnExist` when the destination is a pre-created empty directory.
+  const tempDir=await fs.mkdtemp(path.join(parent,'.buildsteward-stage-'));
+  const stage=path.join(tempDir,'buildsteward');
   try {
     await fs.cp(SKILL_SOURCE,stage,{recursive:true,force:false,errorOnExist:true});
     if (withRuntime) {
@@ -88,9 +91,10 @@ async function makeStaging(dest, withRuntime) {
     }
     const fingerprint=await payloadFingerprint(stage);
     await fs.writeFile(path.join(stage,MARKER),JSON.stringify({managedBy:'buildsteward',schema:1,fingerprint,withRuntime,installedAt:new Date().toISOString()},null,2)+'\n',{mode:0o600});
-    return stage;
-  } catch(e) { await fs.rm(stage,{recursive:true,force:true}); throw e; }
+    return {stage,tempDir};
+  } catch(e) { await fs.rm(tempDir,{recursive:true,force:true}); throw e; }
 }
+
 function backupBase(scope, root, home) {
   return scope==='project' ? path.join(stateDir(root),'skill-backups') : path.join(home,'.config','buildsteward','skill-backups');
 }
@@ -117,7 +121,7 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
     if(graph!=='off') await setConfig(rootAbs,'memory.codeGraph.mode',graph);
   }
   for (const b of before) {
-    const stage=await makeStaging(b.path,withRuntime);
+    const {stage,tempDir}=await makeStaging(b.path,withRuntime);
     let backup=null;
     try {
       if (b.status!=='missing') {
@@ -129,7 +133,7 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
       try { await fs.rename(stage,b.path); }
       catch(e) { if(backup) await fs.rename(backup,b.path).catch(()=>{}); throw e; }
       results.push({path:b.path,action:b.status==='missing'?'installed':'updated',backup});
-    } finally {await fs.rm(stage,{recursive:true,force:true}).catch(()=>{});}
+    } finally {await fs.rm(tempDir,{recursive:true,force:true}).catch(()=>{});}
   }
   return {scope,agents:chosen,mode:scope==='project'?(await readConfig(rootAbs)).autonomy.mode:null,graph:scope==='project'?(await readConfig(rootAbs)).memory.codeGraph.mode:null,withRuntime,paths:results,projectConfig:scope==='project'?(projectConfigExists?'preserved':'created'):'not-touched'};
 }
