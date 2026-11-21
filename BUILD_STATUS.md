@@ -57,7 +57,7 @@ Pi used a skill-only install plus the standalone CLI. Headless Pi discovered the
 
 ## npm release
 
-The npm registry exposes `@hamskillah/buildsteward@0.1.0` as `latest`. Its integrity metadata matches the tarball packed from commit `892667c`. A clean install from the registry in the release executor resolved the version but got HTTP 404 fetching the public tarball. Global installation of the locally packed artifact and the interactive console passed.
+The npm registry exposes `@hamskillah/buildsteward@0.1.0` as `latest`. Its integrity metadata matches the tarball packed from commit `892667c`. A clean global install from the public registry passed after initial tarball download retries. The installed `buildsteward` command opened the terminal console, installed the Codex skill, and reported it ready.
 
 ## Not verified or not implemented
 - An authenticated Cursor run remains unverified. Automatic skill selection is not established across tasks or agents.
