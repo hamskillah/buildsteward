@@ -49,8 +49,11 @@ export async function inspectProjectDependencies(root) {
   if(missing.length)warnings.push('Declared dependency missing from lockfile');
   if(mismatch.length)warnings.push('Lockfile root declarations differ from package.json');
   const hasMismatch=missing.length>0||mismatch.length>0;
+  // v1 lacks root manifest declarations; v2/v3 require a valid root package.
+  const canVerifyRoot=lock.value.lockfileVersion!==1 && rootPkg && typeof rootPkg==='object' && !Array.isArray(rootPkg);
+  if(!canVerifyRoot)warnings.push('Lockfile does not provide verifiable root declarations');
   return {
-    ecosystem:'npm',status:hasMismatch?'inconsistent':'consistent_manifest',
+    ecosystem:'npm',status:hasMismatch?'inconsistent':canVerifyRoot?'consistent_manifest':'unverified_manifest',
     lockfileVersion:lock.value.lockfileVersion,
     counts:{direct:declared.size,lockedPackageEntries:count},
     missing:missing.slice(0,30),mismatchedRanges:mismatch.slice(0,30),
