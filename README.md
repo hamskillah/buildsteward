@@ -40,7 +40,7 @@ This uses the [Skills CLI](https://github.com/vercel-labs/skills) to install the
 
 ### Option B: Full local setup (skill + bundled Cortex CLI)
 
-Requires **Node.js 22+**, Git and npm. Until an npm package is published, invoke the CLI directly from this public GitHub repository:
+Requires **Node.js 22+**, Git and npm. The scoped npm package is prepared but **not yet published**. Until the publisher account and package ownership are verified, invoke the CLI directly from this GitHub repository:
 
 ```bash
 # Run from the project that should receive BuildSteward:
@@ -111,6 +111,10 @@ npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents c
 ```
 
 **Installation guarantees:** `doctor --strict` verifies files and install fingerprints, not host activation. The installer does not automatically enable an agent's permission policies, and approval ledger entries are not trusted authorization tokens. Runtime directory scanning is intentionally not a substitute for checking your actual agent configuration.
+
+### npm publication status
+
+The package metadata targets `@hamskillah/buildsteward`. The corresponding `npx @hamskillah/buildsteward setup` command is **not available** until the package is actually published by an authorized npm owner. The GitHub installer is the currently supported public distribution route. See [npm Publishing Checklist](docs/NPM-PUBLISHING.md).
 
 ## Running the local CLI
 

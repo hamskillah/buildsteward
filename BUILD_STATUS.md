@@ -34,3 +34,5 @@ This repository is an **implemented local foundation** for BuildSteward, not a f
 - Interactive setup supports explicit agent selection even when agent executables are not on PATH.
 - Isolated artifact smoke test verifies an actual `npm pack` tarball, bundled CLI and installed skill.
 - Live activation on each host agent and public npm publication remain unverified.
+
+- npm packaging metadata is publication-ready for `@hamskillah/buildsteward` 0.1.0; **no npm package has been published or registry ownership verified**.
