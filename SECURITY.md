@@ -15,7 +15,7 @@ BuildSteward consumes repository content and online API data. Treat both as untr
 
 A text-file approval ledger **cannot authenticate that a user, rather than the agent, approved a request**. Any untrusted agent with shell/write access to that file or CLI can approve itself. Protect privileged execution using host tool permission gates, independent credentials, or a human-controlled approval channel before real autonomous deployment/spending/data deletion.
 
-The included `guard` command is an advisory gate for clients that voluntarily invoke it, **not a security sandbox**. High-risk operations must be blocked at the actual execution boundary.
+The included `guard` command is an advisory gate for clients that voluntarily invoke it, **not a security sandbox**. High-risk operations must be blocked at the actual execution boundary. The advisory action policy allows only an exact catalog of routine in-scope action names; unrecognized action names fail closed, even in autonomous mode.
 
 ## Data integrity limitation
 

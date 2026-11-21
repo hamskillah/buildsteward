@@ -18,7 +18,7 @@ A coding agent should behave like a professional product engineer: **understand 
 | Developer routing | Classifies user tasks into fast/standard/architectural paths (heuristic) |
 | Decision engine | Hard gates, adjustable profiles, missing-evidence/tie handling, decision ledger |
 | Approval mode | Suggests decisions and records explicit approval/rejection workflow |
-| Autonomous mode | Makes in-scope decisions when evidence is sufficient; high-risk actions require approval |
+| Autonomous mode | Makes in-scope decisions when evidence is sufficient; high-risk and unknown actions require approval |
 | Dependency evidence | Queries deps.dev **specific package version** + OSV, cached and offline-capable |
 | Steward Library | Eight small searchable engineering recipes with source references |
 | Checkpoints | Project state in `.buildsteward/checkpoint.json` |
@@ -141,7 +141,7 @@ The CLI prints compact JSON by default. The `.buildsteward/` directory holds loc
 
 ## Modes
 
-- `approval`: agent selects and recommends a material decision, then records an ACC/rejection before marking the decision approved. Routine work within previously approved scope should not generate repeated questions.
+- `approval`: agent selects and recommends a material decision, then records an ACC/rejection before marking the decision approved. Exact recognized routine actions within scope do not need repeated ACC. Unknown action names fail closed; approval records are advisory only.
 - `autonomous`: agent may finalize an evidence-backed, in-scope decision. Production deployments, destructive operations, external spend, secret-scope escalation, and mission pivots still require **separate explicit authorization**.
 
 Example decision approval flow:

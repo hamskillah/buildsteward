@@ -2,10 +2,16 @@ import { readConfig } from './config.js';
 import { loadState, saveState, newId } from './state.js';
 
 const HIGH_RISK = new Set(['production_deploy', 'destructive_operation', 'external_spend', 'secret_access_escalation', 'mission_pivot']);
+// Conservative, exact names for routine in-scope actions. Unknown actions must
+// never inherit blanket authorization from the word 'autonomous'.
+const ROUTINE = new Set(['local_test','inspect_repo','run_local_tests','local_build','scoped_edit','scoped_refactor','read_documentation','install_approved_dependency']);
 export function actionPolicy(config, action, target, approvals = []) {
   if (typeof action !== 'string' || !action.trim() || !target || typeof target !== 'string') throw new Error('action and target required');
   const needsExplicit = HIGH_RISK.has(action) || config.execution.approvalRequired.includes(action);
-  if (!needsExplicit && config.autonomy.mode === 'autonomous') return { allowed: true, basis: 'autonomous_scope', action, target };
+  // Routine work does not need repetitive ACC, even in approval mode.
+  if (!needsExplicit && ROUTINE.has(action)) return { allowed: true, basis: 'routine_scoped', action, target };
+  // Everything else, including unknown action names, requires a recorded ACC.
+  // The host must still enforce permissions at the actual tool boundary.
   const applicable = approvals.find(a => a.action === action && a.target === target && a.status === 'approved' && (!a.expiresAt || Date.parse(a.expiresAt) > Date.now()));
   return applicable ? { allowed: true, basis: 'recorded_approval', approvalId: applicable.id, action, target } : { allowed: false, basis: 'approval_required', action, target };
 }

@@ -178,3 +178,17 @@ test('cli integration: init, decision record, approve, and inspect', async () =>
     assert.ok(Array.isArray(run('inspect').markers));
   } finally { await fs.rm(root,{recursive:true,force:true}); }
 });
+
+
+test('approval mode permits explicitly scoped routine work, unknown actions fail closed even in autonomous mode',async()=>{
+  await withProject(async root=>{
+    assert.equal((await checkAction(root,'run_local_tests','repository')).allowed,true);
+    assert.equal((await checkAction(root,'scoped_edit','approved-feature')).allowed,true);
+    assert.equal((await checkAction(root,'wipe_prod_database','production')).allowed,false);
+  },'approval');
+  await withProject(async root=>{
+    assert.equal((await checkAction(root,'run_local_tests','repository')).allowed,true);
+    assert.equal((await checkAction(root,'wipe_prod_database','production')).allowed,false);
+    assert.equal((await checkAction(root,'production_deploy','prod')).allowed,false);
+  },'autonomous');
+});

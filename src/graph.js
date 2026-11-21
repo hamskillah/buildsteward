@@ -3,13 +3,14 @@ import { readConfig } from './config.js';
 
 function present(binary) {
   const result = spawnSync(binary, ['--help'], { encoding: 'utf8', timeout: 2000, maxBuffer: 150_000 });
-  return !result.error || result.error?.code !== 'ENOENT';
+  return !result.error; 
 }
 export async function graphStatus(root) {
   const config = await readConfig(root);
   const binary = config.memory.codeGraph.provider;
   const enabled = config.memory.codeGraph.mode !== 'off';
-  return { mode: config.memory.codeGraph.mode, provider: binary, available: enabled ? present(binary) : null, active: enabled && present(binary), note: enabled ? 'Graph data is advisory; verify it against current source files.' : 'Code graph disabled; use file/git search.' };
+  const available = enabled ? present(binary) : null;
+  return { mode: config.memory.codeGraph.mode, provider: binary, available, active: enabled && available, note: enabled ? 'Graph data is advisory; verify it against current source files.' : 'Code graph disabled; use file/git search.' };
 }
 export async function graphSearch(root, query, project) {
   const config = await readConfig(root);
