@@ -144,3 +144,7 @@ The command **preserves project settings, checkpoints and decisions**. It moves 
 - A skill file on disk cannot guarantee host activation or secure approval enforcement. `approval` records are workflow metadata and not a substitute for host-enforced permissions.
 - No network is used by the installer itself. Optional `deps inspect` uses API calls when requested.
 - Full setup is currently validated with local filesystem and CLI integration tests, not across every real host-agent UI.
+
+### Optional Codebase Memory provider
+
+Enable the graph with `buildsteward config set memory.codeGraph.mode on` after installing and indexing the repository with Codebase Memory MCP. Use `buildsteward graph status` to check whether the provider responds. Use `buildsteward graph search "SymbolName"` to search the single index whose root matches the current checkout. If the list is incomplete, there are multiple matches, or you are running from a subdirectory, provide the index name with `--project NAME`. The graph command never indexes or changes a project. Check graph results against the source files before relying on them.
