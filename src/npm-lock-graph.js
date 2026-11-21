@@ -39,7 +39,7 @@ function targetIdentity(packages, target, name, requested) {
   return { status: 'resolved', package: { name: actualName, version: record.version } };
 }
 
-export async function graphNpmLock(root) {
+export async function graphNpmLock(root, { onEdge } = {}) {
   const result = await readNpmLock(root);
   if (!result.lock) return result;
   const { lock: { lockfileVersion, packages }, lockfileDigest } = result;
@@ -69,9 +69,9 @@ export async function graphNpmLock(root) {
         if (identity.status === 'resolved') counts.resolved++;
         else if (identity.status === 'optional_missing') counts.optionalMissing++;
         else counts.unresolved++;
-        if (edges.length < PREVIEW_LIMIT) {
-          edges.push({ from, to, name: name.slice(0, 214), requested: valid ? requested : null, kind, optional, ...identity });
-        }
+        const edge = { from, to, name: name.slice(0, 214), requested: valid ? requested : null, kind, optional, ...identity };
+        if (edges.length < PREVIEW_LIMIT) edges.push(edge);
+        onEdge?.(edge, to === null ? null : packages[to]?.resolved);
       }
     }
   }

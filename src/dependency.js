@@ -22,18 +22,25 @@ async function fromCache(filename, ttlHours, offline) {
   return null;
 }
 
-async function requestJSON(url, { method = 'GET', body, fetcher = fetch }) {
+async function requestJSON(url, { method = 'GET', body, fetcher = fetch, validate = () => true }) {
   const response = await fetcher(url, { method, headers: { 'accept': 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const text = await response.text();
-  if (text.length > 3_000_000) throw new Error('Response too large');
-  return JSON.parse(text);
+  const pieces = [];
+  let size = 0;
+  for await (const chunk of response.body ?? [Buffer.from(await response.text())]) {
+    size += chunk.byteLength;
+    if (size > 3_000_000) throw new Error('Response too large');
+    pieces.push(chunk);
+  }
+  const data = JSON.parse(Buffer.concat(pieces, size).toString('utf8'));
+  if (!validate(data)) throw new Error('Invalid evidence response');
+  return data;
 }
 
-async function fetchEvidence(root, key, url, options, { offline = false, fetcher = fetch, cacheHours = 24 } = {}) {
+export async function fetchEvidence(root, key, url, options, { offline = false, fetcher = fetch, cacheHours = 24 } = {}) {
   const file = cacheFile(root, key);
   const prior = await fromCache(file, cacheHours, offline);
-  if (prior) return { data: prior.data, source: url, status: prior.stale ? 'cached_stale' : 'cached', observedAt: prior.observedAt };
+  if (prior && (!options.validate || options.validate(prior.data))) return { data: prior.data, source: url, status: prior.stale ? 'cached_stale' : 'cached', observedAt: prior.observedAt };
   if (offline) return { data: null, source: url, status: 'unavailable_offline', observedAt: null };
   try {
     const data = await requestJSON(url, { ...options, fetcher });
