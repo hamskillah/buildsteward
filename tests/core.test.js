@@ -75,7 +75,10 @@ test('high risk action fails closed in autonomous and approval modes', async () 
     const req = await requestApproval(root,'production_deploy','prod','Release is ready');
     assert.equal((await checkAction(root,'production_deploy','prod')).allowed,false);
     await resolveApproval(root,req.id,'approved','user-operator');
-    assert.equal((await checkAction(root,'production_deploy','prod')).allowed,true);
+    const guarded=await checkAction(root,'production_deploy','prod');
+    assert.equal(guarded.allowed,false);
+    assert.equal(guarded.basis,'trusted_host_authorization_required');
+    assert.equal(guarded.recordedApprovalId,req.id);
     assert.equal((await checkAction(root,'production_deploy','other-prod')).allowed,false);
   },'autonomous');
   assert.equal(actionPolicy({autonomy:{mode:'autonomous'},execution:{approvalRequired:[]}},'local_test','repo',[]).allowed,true);

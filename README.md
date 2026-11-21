@@ -18,7 +18,7 @@ A coding agent should behave like a professional product engineer: **understand 
 | Developer routing | Classifies user tasks into fast/standard/architectural paths (heuristic) |
 | Decision engine | Hard gates, adjustable profiles, missing-evidence/tie handling, decision ledger |
 | Approval mode | Suggests decisions and records explicit approval/rejection workflow |
-| Autonomous mode | Makes in-scope decisions when evidence is sufficient; high-risk and unknown actions require approval |
+| Autonomous mode | Makes in-scope decisions when evidence is sufficient; high-risk actions require approval |
 | Dependency evidence | Queries deps.dev **specific package version** + OSV, cached and offline-capable |
 | Steward Library | Eight small searchable engineering recipes with source references |
 | Checkpoints | Project state in `.buildsteward/checkpoint.json` |
@@ -40,7 +40,7 @@ This uses the [Skills CLI](https://github.com/vercel-labs/skills) to install the
 
 ### Option B: Full local setup (skill + bundled Cortex CLI)
 
-Requires **Node.js 22+**, Git and npm. The scoped npm package is prepared but **not yet published**. Until the publisher account and package ownership are verified, invoke the CLI directly from this GitHub repository:
+Requires **Node.js 22+**, Git and npm. Until an npm package is published, invoke the CLI directly from this public GitHub repository:
 
 ```bash
 # Run from the project that should receive BuildSteward:
@@ -112,10 +112,6 @@ npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents c
 
 **Installation guarantees:** `doctor --strict` verifies files and install fingerprints, not host activation. The installer does not automatically enable an agent's permission policies, and approval ledger entries are not trusted authorization tokens. Runtime directory scanning is intentionally not a substitute for checking your actual agent configuration.
 
-### npm publication status
-
-The package metadata targets `@hamskillah/buildsteward`. The corresponding `npx @hamskillah/buildsteward setup` command is **not available** until the package is actually published by an authorized npm owner. The GitHub installer is the currently supported public distribution route. See [npm Publishing Checklist](docs/NPM-PUBLISHING.md).
-
 ## Running the local CLI
 
 If you cloned the repository or installed the full bundle, the CLI can be called directly:
@@ -141,7 +137,7 @@ The CLI prints compact JSON by default. The `.buildsteward/` directory holds loc
 
 ## Modes
 
-- `approval`: agent selects and recommends a material decision, then records an ACC/rejection before marking the decision approved. Exact recognized routine actions within scope do not need repeated ACC. Unknown action names fail closed; approval records are advisory only.
+- `approval`: agent selects and recommends a material decision, then records an ACC/rejection before marking the decision approved. Routine work within previously approved scope should not generate repeated questions.
 - `autonomous`: agent may finalize an evidence-backed, in-scope decision. Production deployments, destructive operations, external spend, secret-scope escalation, and mission pivots still require **separate explicit authorization**.
 
 Example decision approval flow:

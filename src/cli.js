@@ -5,6 +5,7 @@ import { routeTask } from './router.js';
 import { inspectProject } from './inspect.js';
 import { evaluateDecision, recordDecision, resolveDecision, listDecisions } from './decision.js';
 import { inspectDependency } from './dependency.js';
+import { inspectProjectDependencies } from './dependency-audit.js';
 import { listKnowledge, searchKnowledge, readKnowledge } from './library.js';
 import { requestApproval, resolveApproval, checkAction, listApprovals } from './approval.js';
 import { setCheckpoint, getCheckpoint } from './checkpoint.js';
@@ -12,8 +13,9 @@ import { recordProgress } from './progress.js';
 import { graphStatus, graphSearch } from './graph.js';
 import { setupInstallation, installationDoctor, uninstallInstallation, rollbackInstallation, detectAgents } from './setup.js';
 import { createInterface } from 'node:readline/promises';
+import { createWork, workStatus, nextWork, startWork, completeWork, reviewWork, blockWork, resumeWork, checkWork, workContext } from './work.js';
 
-const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
+const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  deps project (offline npm manifest/lockfile inspection)\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n  work create --file plan.json | status | next | context\n  work start --id ID | done --id ID --evidence TEXT\n  work review --id ID --evidence TEXT (manual tasks only)\n  work check --id ID --runner npm-test|node-test|go-test|cargo-test|python-test --confirm-run\n  work block --id ID --reason TEXT | resume --id ID\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
 function param(args, key, fallback) {
   const i = args.indexOf(key); if (i === -1) return fallback;
   if (i + 1 >= args.length || args[i + 1].startsWith('--')) throw new Error('Missing value for '+key);
@@ -82,8 +84,9 @@ export async function main(args) {
       else throw new Error('Expected decide evaluate|record|list');
       break;
     case 'deps':
-      if(sub !== 'inspect') throw new Error('Expected deps inspect');
-      result = await inspectDependency(root, { ecosystem: required(rest,'--ecosystem'), name: required(rest,'--name'), version: required(rest,'--version'), offline: rest.includes('--offline') });
+      if(sub==='project') result = await inspectProjectDependencies(root);
+      else if(sub==='inspect') result = await inspectDependency(root, { ecosystem: required(rest,'--ecosystem'), name: required(rest,'--name'), version: required(rest,'--version'), offline: rest.includes('--offline') });
+      else throw new Error('Expected deps inspect|project');
       break;
     case 'library':
       if(sub==='list') result = (await listKnowledge()).map(e => ({id:e.id,title:e.title,summary:e.summary}));
@@ -106,6 +109,19 @@ export async function main(args) {
     case 'progress':
       if(sub!=='record') throw new Error('Expected progress record');
       result = await recordProgress(root, { action:required(rest,'--action'), outcome:required(rest,'--outcome'), evidence:param(rest,'--evidence','') });
+      break;
+    case 'work':
+      if(sub==='create') result=await createWork(root,await readInput(required(rest,'--file')));
+      else if(sub==='status') result=await workStatus(root);
+      else if(sub==='next') result=await nextWork(root);
+      else if(sub==='context') result=await workContext(root);
+      else if(sub==='start') result=await startWork(root,required(rest,'--id'));
+      else if(sub==='done') result=await completeWork(root,required(rest,'--id'),required(rest,'--evidence'));
+      else if(sub==='review') result=await reviewWork(root,required(rest,'--id'),required(rest,'--evidence'));
+      else if(sub==='check') result=await checkWork(root,required(rest,'--id'),required(rest,'--runner'),{confirmed:rest.includes('--confirm-run')});
+      else if(sub==='block') result=await blockWork(root,required(rest,'--id'),required(rest,'--reason'));
+      else if(sub==='resume') result=await resumeWork(root,required(rest,'--id'));
+      else throw new Error('Expected work create|status|next|context|start|done|review|check|block|resume');
       break;
     case 'graph':
       if(sub==='status') result = await graphStatus(root);

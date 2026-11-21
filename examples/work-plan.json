@@ -1,0 +1,23 @@
+{
+  "goal": "Add a verified account settings feature without changing the existing stack",
+  "tasks": [
+    {
+      "id": "design",
+      "title": "Review settings UX, API contract, and acceptance scenarios",
+      "kind": "design",
+      "risk": "low",
+      "verification": "manual",
+      "dependsOn": [],
+      "acceptance": ["Settings flow and empty/error states are documented", "Existing UI conventions are preserved"]
+    },
+    {
+      "id": "implement",
+      "title": "Implement account settings vertical slice",
+      "kind": "feature",
+      "risk": "medium",
+      "verification": "automated",
+      "dependsOn": ["design"],
+      "acceptance": ["Settings can be saved and read", "Authorization checks prevent changing another user's settings", "Relevant regression tests pass"]
+    }
+  ]
+}

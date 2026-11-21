@@ -3,7 +3,7 @@ import path from 'node:path';
 import { stateDir, safeWriteJson } from './config.js';
 
 export function storagePath(root, name) {
-  const allowed = new Set(['decisions', 'approvals', 'checkpoint', 'progress']);
+  const allowed = new Set(['decisions', 'approvals', 'checkpoint', 'progress', 'work']);
   if (!allowed.has(name)) throw new Error('Unknown state collection');
   return path.join(stateDir(root), `${name}.json`);
 }

@@ -11,6 +11,14 @@ BuildSteward is an **engineering support skill and local CLI**, not a self-runni
 5. No secret or private data is embedded in the skill, output, tests, or package archive.
 6. The PR review addresses high-impact path, permissions and supply-chain changes.
 
+## Developer loop and evidence gates
+
+- Work-plan validation tests cover DAG cycles, missing prerequisites, state resumption and test outcomes.
+- `work done` is implementation evidence, not verified success. Actual command execution must be logged as a check and interpreted against relevant acceptance criteria.
+- Manual reviews are self-reported and do not prove human approval.
+- Repeated identical test failures are blocked rather than looped indefinitely.
+- Release readiness, trusted host authorization, visual QA and cross-agent activation remain separate gates.
+
 ## Criteria for npm publication (separate authorization)
 
 - Choose and verify an available npm package name and publisher identity.

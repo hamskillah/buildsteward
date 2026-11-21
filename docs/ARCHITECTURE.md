@@ -10,7 +10,8 @@ BuildSteward is a **local-first tool-assisted engineering discipline**, not a ne
 4. **Dependency Intelligence** reads version-specific deps.dev and OSV data. It returns facts plus *checks not performed*, not a fabricated security score.
 5. **Steward Library** contains short, atomic engineering playbooks and source links. Retrieval selects specific topics; do not load the entire library into agent context.
 6. **Project State** stores decisions, scoped approvals, checkpoints and progress fingerprints in local JSON. Optional CBM graph is a read-only navigation aid.
-7. **Execution Guardian** provides a decision policy signal and stagnation warnings. Production tool permission enforcement remains the responsibility of the host/runtime.
+7. **Developer Execution Loop** stores a small DAG of actual work tasks, a compact context and test-run statuses; the coding agent remains the executor. It does not prove user acceptance or release readiness.
+8. **Execution Guardian** provides a decision policy signal and stagnation warnings. Production tool permission enforcement remains the responsibility of the host/runtime.
 
 No required cloud service, vector DB, background daemon, native dependency, or graph server is introduced.
 
@@ -56,7 +57,7 @@ Future research connectors must comply with user policy, record evidence provena
 ## Intentional exclusions (not silently complete)
 
 - No authenticated human-approval channel.
-- No direct deployment or project builder orchestration.
+- No direct deployment or model-executing project builder; the new work ledger coordinates agent-performed tasks.
 - No built-in MCP server; CLI adapter to CBM is optional.
 - No broad transitive dependency analysis or automatic candidate discovery yet.
 - No hosted memory store, agent cloud scheduler, visual testing automation or automatic PRs.
