@@ -32,6 +32,7 @@ The CLI is published as [`@hamskillah/buildsteward`](https://www.npmjs.com/packa
 | Understand an unfamiliar project | `buildsteward inspect` |
 | See direct and nested packages recorded in an npm lockfile | `buildsteward deps inventory` |
 | Trace which packages request an npm dependency | `buildsteward deps graph` |
+| Check exact npm lockfile versions against OSV | `buildsteward deps advisories --online` |
 | Detect stale root lockfile declarations | `buildsteward deps project` |
 | Resume tracked project work with its verification history | `buildsteward work status` |
 | Check whether your agent's skill files are installed | `buildsteward doctor` |
