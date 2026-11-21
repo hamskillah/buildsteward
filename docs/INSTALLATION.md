@@ -58,7 +58,13 @@ Ask the agent to use BuildSteward in its next session. These installs provide th
 
 ## Claude Code with an OpenCode Go model
 
-Install the Claude Code target with `buildsteward setup --agents claude --yes` from the project. In a shell that already holds your OpenCode Go key as `OPENCODE_GO_API_KEY`, scope the custom backend to the Claude invocation:
+Install the Claude Code target from the project:
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents claude --yes
+```
+
+In a shell that already holds your OpenCode Go key as `OPENCODE_GO_API_KEY`, scope the custom backend to the Claude invocation:
 
 ```bash
 ANTHROPIC_BASE_URL=https://opencode.ai/inference/go/anthropic \
