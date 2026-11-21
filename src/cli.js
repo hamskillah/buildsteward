@@ -6,6 +6,7 @@ import { inspectProject } from './inspect.js';
 import { evaluateDecision, recordDecision, resolveDecision, listDecisions } from './decision.js';
 import { inspectDependency } from './dependency.js';
 import { inspectProjectDependencies } from './dependency-audit.js';
+import { inventoryNpmLock } from './npm-lock-inventory.js';
 import { listKnowledge, searchKnowledge, readKnowledge } from './library.js';
 import { requestApproval, resolveApproval, checkAction, listApprovals } from './approval.js';
 import { setCheckpoint, getCheckpoint } from './checkpoint.js';
@@ -15,7 +16,7 @@ import { setupInstallation, installationDoctor, uninstallInstallation, rollbackI
 import { createInterface } from 'node:readline/promises';
 import { createWork, workStatus, nextWork, startWork, completeWork, reviewWork, blockWork, resumeWork, checkWork, workContext } from './work.js';
 
-const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  deps project (offline npm manifest/lockfile inspection)\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n  work create --file plan.json | status | next | context\n  work start --id ID | done --id ID --evidence TEXT\n  work review --id ID --evidence TEXT (manual tasks only)\n  work check --id ID --runner npm-test|node-test|go-test|cargo-test|python-test --confirm-run\n  work block --id ID --reason TEXT | resume --id ID\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
+const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  deps project (offline npm manifest/lockfile inspection)\n  deps inventory (offline npm v2/v3 lockfile entries)\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n  work create --file plan.json | status | next | context\n  work start --id ID | done --id ID --evidence TEXT\n  work review --id ID --evidence TEXT (manual tasks only)\n  work check --id ID --runner npm-test|node-test|go-test|cargo-test|python-test --confirm-run\n  work block --id ID --reason TEXT | resume --id ID\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
 function param(args, key, fallback) {
   const i = args.indexOf(key); if (i === -1) return fallback;
   if (i + 1 >= args.length || args[i + 1].startsWith('--')) throw new Error('Missing value for '+key);
@@ -86,8 +87,9 @@ export async function main(args) {
       break;
     case 'deps':
       if(sub==='project') result = await inspectProjectDependencies(root);
+      else if(sub==='inventory') result = await inventoryNpmLock(root);
       else if(sub==='inspect') result = await inspectDependency(root, { ecosystem: required(rest,'--ecosystem'), name: required(rest,'--name'), version: required(rest,'--version'), offline: rest.includes('--offline') });
-      else throw new Error('Expected deps inspect|project');
+      else throw new Error('Expected deps inspect|project|inventory');
       break;
     case 'library':
       if(sub==='list') result = (await listKnowledge()).map(e => ({id:e.id,title:e.title,summary:e.summary}));

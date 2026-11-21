@@ -1,0 +1,7 @@
+# Offline npm lockfile inventory
+
+Run `buildsteward deps inventory` in a project with `package-lock.json` (or pass `--root PATH`). Initialization and network access are not required. The command accepts npm lockfile versions 2 and 3, limits input to 8 MB, and returns the lockfile SHA-256, total package-entry counts, and a preview of at most 100 `node_modules` entries. Nested paths preserve multiple installed versions. The output records optional and development flags and bounded OS/CPU metadata.
+
+`inventoried` means eligible entries were read; it does not mean the lockfile is complete, valid for the current platform, installed, safe, or supported by a security policy. `partial` means at least one entry in the full inventory was missing a usable version, was malformed, or was a workspace link. Such entries remain unresolved even if outside the preview. Missing files, invalid structure/JSON and unsupported lockfile versions have separate statuses. Oversized input fails with an error.
+
+Names from `nameSource: install_path` are inferred and can be aliases; `lockfile` means the entry supplied the name. The command does not resolve dependency edges, inspect linked workspace metadata, resolve aliases reliably, perform advisory or license analysis, verify integrity, or test runtime compatibility. Platform lists and entry previews are bounded and can omit information. Do not use this output as an authorization or a vulnerability gate.

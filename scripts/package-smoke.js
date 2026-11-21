@@ -18,6 +18,12 @@ try {
   const metadata=JSON.parse(packOutput)[0];
   if(!metadata?.filename) throw new Error('npm pack did not produce a tarball');
   const archive=path.join(temp,metadata.filename);
+  // Verify npm actually links the package binary, not only direct Node invocation.
+  const prefix=path.join(temp,'installed');
+  await fs.mkdir(prefix);
+  run(npm,['install','--ignore-scripts','--offline','--no-audit','--no-fund','--prefix',prefix,archive],{cwd:temp,env:{...process.env,npm_config_userconfig:path.join(temp,'empty-npmrc'),npm_config_cache:path.join(temp,'cache')}});
+  const linked=path.join(prefix,'node_modules','.bin',process.platform==='win32'?'buildsteward.cmd':'buildsteward');
+  if(!run(linked,['help'],{cwd:temp}).includes('BuildSteward')) throw new Error('Installed npm executable failed');
   run('tar',['-xzf',archive,'-C',temp]);
   const pkg=path.join(temp,'package');
   const skill=await fs.readFile(path.join(pkg,'skills','buildsteward','SKILL.md'),'utf8');
@@ -34,6 +40,9 @@ try {
   if(!inspected.ok) throw new Error('Copied Cortex runtime is unusable');
   const doctor=JSON.parse(run(process.execPath,[runtime,'--root',project,'doctor','--agents','codex','--strict'],{cwd:pkg}));
   if(!doctor.ok || doctor.result.healthy!==true) throw new Error('Doctor did not validate packaged install');
+  await fs.writeFile(path.join(project,'package-lock.json'),JSON.stringify({lockfileVersion:3,packages:{'':{},'node_modules/example':{version:'1.2.3'}}}));
+  const inventory=JSON.parse(run(process.execPath,[installedRuntime,'--root',project,'deps','inventory'],{cwd:project}));
+  if(inventory.result.entries[0]?.version!=='1.2.3') throw new Error('Packaged npm inventory failed');
   // Verify the packed, installed Cortex actually contains the developer work engine.
   const sample={goal:'Check packed work runtime',tasks:[{id:'docs',title:'Document setup',kind:'documentation',risk:'low',verification:'manual',dependsOn:[],acceptance:['Documentation checked']}]};
   const plan=path.join(project,'sample-plan.json');

@@ -176,6 +176,8 @@ For multi-step features and repairs, BuildSteward now coordinates bounded engine
 
 ## Dependency Intelligence
 
+`deps inventory` lists up to 100 npm v2/v3 lockfile package entries offline, preserving nested install paths and recording optional/platform flags. It reports unresolved links and missing versions, a full entry count and the lockfile SHA-256. Names inferred from install paths can be aliases; this is not dependency-edge resolution or a security scan.
+
 `deps project` checks npm manifest vs lockfile consistency **offline**. Lockfile v1 or a lockfile without root declarations yields `unverified_manifest` when no inconsistency was detected; this is not a pass. It does not perform vulnerability analysis, license review or full transitive scanning. `deps inspect` uses:
 - [deps.dev v3 GetVersion](https://docs.deps.dev/api/v3/) for published version metadata, declared license identifiers and known *direct* advisory keys.
 - [OSV query](https://google.github.io/osv.dev/api/) for version-specific known vulnerabilities.
