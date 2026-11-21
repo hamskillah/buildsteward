@@ -1,70 +1,17 @@
-# BuildSteward: panduan cepat (Bahasa Indonesia)
+# Mulai memakai BuildSteward
 
-BuildSteward adalah fondasi **skill + CLI** untuk membuat AI coding agent bekerja dengan alur developer yang lebih disiplin, tanpa memasukkan semua referensi ke konteks model.
+BuildSteward membantu coding agent memeriksa proyek, mengambil keputusan dengan bukti, dan melaporkan test yang benar-benar dijalankan.
 
-## Mulai
-
-Persyaratan: Node.js 22+ dan repository proyek yang ingin dikerjakan. Dari folder BuildSteward:
-
-```bash
-npm test
-node bin/buildsteward.js --root /lokasi/proyek init --mode approval
-node bin/buildsteward.js --root /lokasi/proyek inspect
-node bin/buildsteward.js route "Perbaiki bug login dan buat regression test"
-node bin/buildsteward.js library search "dependency security"
-```
-
-Jika ingin memberi agent lebih banyak kebebasan **mengambil keputusan dalam scope yang telah disetujui**:
-
-```bash
-node bin/buildsteward.js --root /lokasi/proyek config set autonomy.mode autonomous
-```
-
-Ini tidak memberi izin otomatis untuk deploy production, menghapus data atau menggunakan kredensial. Batas eksekusi sesungguhnya tetap di pengaturan permission coding agent/host.
-
-## Integrasi skill
-
-Salin `skills/buildsteward/` ke direktori Agent Skills yang dikenali coding agent. Jika agent mendukung `.agents/skills/`, salin ke `.agents/skills/buildsteward/`. Lihat dokumentasi agent terkait untuk lokasi dan dukungan CLI-nya.
-
-Agent boleh menjalankan skill walaupun CLI tidak ada. CLI menambahkan decision policy, evidence, checkpoint, dan loop detection.
-
-## Memory Graph opsional
-
-Jika Codebase Memory MCP sudah terpasang dan repository sudah diindeks dengan tool tersebut:
-
-```bash
-node bin/buildsteward.js --root /lokasi/proyek config set memory.codeGraph.mode on
-node bin/buildsteward.js --root /lokasi/proyek graph status
-node bin/buildsteward.js --root /lokasi/proyek graph search AuthHandler --project nama-project-di-CBM
-```
-
-Untuk mematikan: `config set memory.codeGraph.mode off`. BuildSteward tetap berjalan tanpa graph.
-
-## Status saat ini
-
-Ini fondasi fungsional yang sudah ditest lokal, **bukan keseluruhan produk otonom**. Dependency online memerlukan koneksi. Approval CLI belum menjadi batas keamanan terhadap agent yang bisa memakai shell bebas. Jangan mengklaim sebuah aplikasi sudah production-ready hanya karena perintah BuildSteward sukses.
-
-## Instalasi yang disarankan
-
-**Skill saja (ringan):**
+Dari folder proyek, dengan Node.js 22.20 atau lebih baru:
 
 ```bash
 npx skills add hamskillah/buildsteward --skill buildsteward
 ```
 
-**Paket lengkap dengan Cortex CLI, langsung dari GitHub (Node.js 22+, Git):**
+Pilih agent, buka sesi baru, lalu minta:
 
-```bash
-npx --yes --package=github:hamskillah/buildsteward buildsteward setup
-```
+> Pakai BuildSteward untuk memperbaiki bug ini. Reproduksi bug sebelum mengubah kode dan laporkan hasil test sesudahnya.
 
-Untuk VPS tanpa terminal interaktif:
+Cara ini memasang skill dari GitHub. Kalau kamu butuh penyimpanan work plan, catatan keputusan, atau inventaris lockfile npm offline, lihat [cara memasang CLI opsional](INSTALLATION.md). Pakai satu installer per direktori skill agar bundel CLI tidak tertimpa.
 
-```bash
-npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
-  --scope project --agents opencode,codex --mode approval --graph off --yes
-```
-
-Periksa dulu dengan opsi `--dry-run`; jalankan `doctor --agents opencode,codex --strict` setelah instalasi. Gunakan `--skill-only` jika ingin memasang skill tanpa menyertakan Cortex CLI. Runtime Cortex disalin bersama skill, sehingga `npm link` **tidak diperlukan**. Jika Codebase Memory MCP belum terpasang, tetap gunakan `--graph off`.
-
-Lihat [panduan instalasi lengkap](INSTALLATION.md). Instalasi dari Skills CLI hanya memasang skill, bukan runtime Cortex. Instalasi penuh tidak menjamin host agent langsung mengaktifkan skill; periksa daftar skill di agent kamu.
+[Lihat agent dan skenario yang sudah diuji](../BUILD_STATUS.md).
