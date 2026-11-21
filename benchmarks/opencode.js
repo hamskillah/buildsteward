@@ -6,6 +6,16 @@ import { performance } from 'node:perf_hooks';
 const fixtureRunner = path.join(import.meta.dirname, 'run.js');
 const arms = ['baseline', 'skill', 'cli'];
 const timeoutMs = 65_000;
+const cli = 'node .agents/skills/buildsteward/runtime/bin/buildsteward.js';
+const dependencyCommands = [`${cli} deps project`, `${cli} deps inventory`];
+
+function succeededDependencyCall(call) {
+  if (call.tool !== 'bash' || call.state.metadata?.exit !== 0 || !dependencyCommands.includes(call.state.input?.command)) return false;
+  try {
+    const report = JSON.parse(call.state.output);
+    return report?.ok === true && report.result?.ecosystem === 'npm';
+  } catch { return false; }
+}
 
 function fixture(...args) {
   const child = spawnSync(process.execPath, [fixtureRunner, ...args], {
@@ -26,9 +36,11 @@ function summarize(stdout) {
   const counters = {
     input: step => step.tokens?.input,
     output: step => step.tokens?.output,
+    reasoning: step => step.tokens?.reasoning,
+    total: step => step.tokens?.total,
     cachedRead: step => step.tokens?.cache?.read,
     cachedWrite: step => step.tokens?.cache?.write,
-    cost: step => step.cost,
+    estimatedCost: step => step.cost,
   };
   for (const [key, select] of Object.entries(counters)) {
     const values = steps.map(select);
@@ -37,10 +49,9 @@ function summarize(stdout) {
   }
   return {
     stopped: steps.at(-1)?.reason === 'stop',
-    providerErrors: events.filter(event => event?.type === 'error').length,
+    agentErrors: events.filter(event => event?.type === 'error').length,
     skillUsed: successful.some(call => call.tool === 'skill' && call.state.input?.name === 'buildsteward'),
-    cliUsed: successful.some(call => call.tool === 'bash' &&
-      /buildsteward\.js deps (project|inventory)/.test(call.state.input?.command ?? '')),
+    cliUsed: successful.some(succeededDependencyCall),
     toolCalls: calls.length,
     toolErrors: calls.filter(call => call.state?.status === 'error').length,
     usage: steps.length ? totals : null,
@@ -54,18 +65,25 @@ async function runArm({ task, model, arm, output }) {
   const { prompt } = fixture('prepare', task, arm, project);
   const env = { OPENCODE_DISABLE_AUTOUPDATE: 'true' };
   for (const name of [
-    'PATH', 'HOME', 'USERPROFILE', 'SYSTEMROOT', 'TMPDIR',
+    'PATH', 'SYSTEMROOT', 'TMPDIR',
     'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
     'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy',
     'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR',
-    'OPENCODE_API_KEY', 'OPENCODE_GO_API_KEY',
+    'OPENCODE_API_KEY',
   ]) {
     if (process.env[name] !== undefined) env[name] = process.env[name];
   }
   for (const name of ['CONFIG', 'DATA', 'STATE', 'CACHE']) {
     env[`XDG_${name}_HOME`] = path.join(directory, name.toLowerCase());
   }
-  const cli = 'node .agents/skills/buildsteward/runtime/bin/buildsteward.js';
+  const home = path.join(directory, 'home');
+  await mkdir(home, { mode: 0o700 });
+  env.HOME = home;
+  env.USERPROFILE = home;
+  const git = spawnSync('git', ['init', '-q', '--template='], {
+    cwd: project, env, encoding: 'utf8', timeout: 5000, maxBuffer: 4096,
+  });
+  if (git.status !== 0) throw new Error('Unable to initialize the isolated benchmark project.');
   env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ permission: {
     '*': 'deny',
     external_directory: 'deny',
@@ -76,7 +94,7 @@ async function runArm({ task, model, arm, output }) {
     edit: { '*': 'deny', [task === 'bugfix' ? 'totals.mjs' : 'assessment.json']: 'allow' },
     bash: {
       'node --test': 'allow', 'node --test totals.test.mjs': 'allow',
-      [`${cli} deps project`]: 'allow', [`${cli} deps inventory`]: 'allow',
+      [dependencyCommands[0]]: 'allow', [dependencyCommands[1]]: 'allow',
     },
   } });
   const start = performance.now();
@@ -87,9 +105,10 @@ async function runArm({ task, model, arm, output }) {
   await writeFile(path.join(directory, 'events.jsonl'), stdout, { mode: 0o600 });
   await writeFile(path.join(directory, 'stderr.log'), child.stderr ?? '', { mode: 0o600 });
   const { stopped, ...observed } = summarize(stdout);
-  const completed = child.status === 0 && stopped && !observed.providerErrors;
+  const completed = child.status === 0 && stopped && !observed.agentErrors;
+  const blocked = !observed.usage && !observed.toolCalls;
   return {
-    arm, status: completed ? 'complete' : 'blocked',
+    arm, status: completed ? 'complete' : blocked ? 'blocked' : 'incomplete',
     agentExit: child.status, processError: child.error?.code ?? null,
     elapsedSeconds: Math.round((performance.now() - start) / 10) / 100,
     score: completed ? fixture('score', task, project) : null,
