@@ -1,4 +1,4 @@
-> The current, reviewed publishing procedure is in [RELEASE-NPM.md](RELEASE-NPM.md). The workflow is manual and requires npm Trusted Publisher configuration **after an initial authenticated package bootstrap**.
+> The current, reviewed publishing procedure is in [RELEASE-NPM.md](RELEASE-NPM.md). The workflow is manual and requires npm Trusted Publisher configuration for subsequent releases.
 
 # npm publishing checklist
 
@@ -10,6 +10,6 @@ The repository is set up to produce the scoped package `@hamskillah/buildsteward
 4. Configure npm trusted publishing with GitHub Actions OIDC if feasible, with restricted repository/workflow/branch. Otherwise use appropriately protected publisher authentication and npm's required 2FA.
 5. Publish the exact reviewed source commit with `npm publish --access public`; only the authorized publisher should do this.
 6. Confirm the published package metadata and install it in a clean directory. Verify `npx --yes @hamskillah/buildsteward help` and `setup --dry-run`.
-7. Only after the live registry install passes, change the README to recommend npm as the primary install route.
+7. Record a live installation as verified only after it downloads and runs in a clean environment.
 
 `npm publish --dry-run` is not publication. Node.js tests and local package smoke tests do not verify real coding-agent activation, model behavior or a production permission boundary.
