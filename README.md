@@ -176,7 +176,7 @@ For multi-step features and repairs, BuildSteward now coordinates bounded engine
 
 ## Dependency Intelligence
 
-`deps project` checks npm manifest vs lockfile consistency **offline**. It does not perform vulnerability analysis, license review or full transitive scanning. `deps inspect` uses:
+`deps project` checks npm manifest vs lockfile consistency **offline**. Lockfile v1 or a lockfile without root declarations yields `unverified_manifest` when no inconsistency was detected; this is not a pass. It does not perform vulnerability analysis, license review or full transitive scanning. `deps inspect` uses:
 - [deps.dev v3 GetVersion](https://docs.deps.dev/api/v3/) for published version metadata, declared license identifiers and known *direct* advisory keys.
 - [OSV query](https://google.github.io/osv.dev/api/) for version-specific known vulnerabilities.
 

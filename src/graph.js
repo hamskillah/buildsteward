@@ -3,7 +3,7 @@ import { readConfig } from './config.js';
 
 function present(binary) {
   const result = spawnSync(binary, ['--help'], { encoding: 'utf8', timeout: 2000, maxBuffer: 150_000 });
-  return !result.error; 
+  return !result.error && result.status === 0;
 }
 export async function graphStatus(root) {
   const config = await readConfig(root);
