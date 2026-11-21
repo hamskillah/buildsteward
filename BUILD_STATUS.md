@@ -64,7 +64,7 @@ The npm registry exposes `@hamskillah/buildsteward@0.1.0` as `latest`. Its integ
 - Live deps.dev/OSV network access and real Codebase Memory MCP provider: unavailable to offline local tests.
 - Trusted host-enforced approval, credentials isolation, production deployment, security pentest, comprehensive transitive dependency/lockfile vulnerability scanning.
 - Independent end-to-end LLM task execution: developer loop coordinates work performed by the coding agent, but does not launch models or execute arbitrary project plans autonomously.
-- Cross-model token and correctness benchmarking is pending. The OpenCode comparison above is one exploratory run per arm. Assisted scenarios covered repeated failures, stale local approval and offline dependency inventory.
+- The [OpenCode Go pilot](docs/BENCHMARKS.md#opencode-go-pilot-results) reports 12 matched attempts across two models, two fixtures and three configurations. Each case has one attempt, and all 12 passed. General performance and token-efficiency claims still need more varied tasks and repeated measurements.
 
 ## Trust boundaries
 
