@@ -43,3 +43,28 @@ Untuk mematikan: `config set memory.codeGraph.mode off`. BuildSteward tetap berj
 ## Status saat ini
 
 Ini fondasi fungsional yang sudah ditest lokal, **bukan keseluruhan produk otonom**. Dependency online memerlukan koneksi. Approval CLI belum menjadi batas keamanan terhadap agent yang bisa memakai shell bebas. Jangan mengklaim sebuah aplikasi sudah production-ready hanya karena perintah BuildSteward sukses.
+
+## Instalasi yang disarankan
+
+**Skill saja (ringan):**
+
+```bash
+npx skills add hamskillah/buildsteward --skill buildsteward
+```
+
+**Paket lengkap dengan Cortex CLI, langsung dari GitHub (Node.js 22+, Git):**
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup
+```
+
+Untuk VPS tanpa terminal interaktif:
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
+  --scope project --agents opencode,codex --mode approval --graph off --yes
+```
+
+Periksa dulu dengan opsi `--dry-run`; jalankan `doctor --agents opencode,codex --strict` setelah instalasi. Gunakan `--skill-only` jika ingin memasang skill tanpa menyertakan Cortex CLI. Runtime Cortex disalin bersama skill, sehingga `npm link` **tidak diperlukan**. Jika Codebase Memory MCP belum terpasang, tetap gunakan `--graph off`.
+
+Lihat [panduan instalasi lengkap](INSTALLATION.md). Instalasi dari Skills CLI hanya memasang skill, bukan runtime Cortex. Instalasi penuh tidak menjamin host agent langsung mengaktifkan skill; periksa daftar skill di agent kamu.

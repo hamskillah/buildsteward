@@ -4,7 +4,7 @@ This repository is an **implemented local foundation** for BuildSteward, not a f
 
 ## Verified locally
 
-- `npm test`: 15 tests passing on Node.js 22.16.0 (2026-11-21 environment).
+- `npm test`: 23 tests passing on Node.js 22.16.0 (2026-11-21 environment).
 - `npm run smoke`: CLI help works.
 - `node scripts/check-skill.js`: frontmatter/reference/size checks pass.
 - CLI round-trip: initialize project, inspect, record architectural decision, approve and list.
@@ -26,3 +26,11 @@ This repository is an **implemented local foundation** for BuildSteward, not a f
 - Code graph indexes are advisory and must be refreshed/checked against the current source.
 - `.buildsteward/` JSON state is not a concurrent multi-user transactional store.
 - Node.js 22+ is required, but only Node.js 22.16.0 was tested in this sandbox; CI targets 22/24/26.
+
+## Installer hardening in progress
+
+- `doctor --strict` detects missing/tampered installations and fails nonzero.
+- `setup --skill-only` supports managed lightweight installs.
+- Interactive setup supports explicit agent selection even when agent executables are not on PATH.
+- Isolated artifact smoke test verifies an actual `npm pack` tarball, bundled CLI and installed skill.
+- Live activation on each host agent and public npm publication remain unverified.

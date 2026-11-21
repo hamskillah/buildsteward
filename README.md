@@ -26,62 +26,114 @@ A coding agent should behave like a professional product engineer: **understand 
 | Optional memory graph | CLI adapter to existing `codebase-memory-mcp`, disabled by default |
 | Tests | Node built-in test runner; no npm runtime dependencies |
 
-## Requirements
+## Install BuildSteward
 
-- Node.js 22 or newer and an accessible repository directory.
-- Optional: Internet for live dependency evidence.
-- Optional: [Codebase Memory MCP](https://github.com/DeusData/codebase-memory-mcp) installed separately for graph search.
+There are **two supported installation modes**. Both work independently, with no mandatory cloud service.
 
-No `npm install` is necessary to run the local CLI.
-
-## Quick start
+### Option A: Skill only (lightweight, no Cortex runtime)
 
 ```bash
-# From inside the downloaded BuildSteward directory:
+npx skills add hamskillah/buildsteward --skill buildsteward
+```
+
+This uses the [Skills CLI](https://github.com/vercel-labs/skills) to install the portable workflow. It does **not** install the CLI or grant permissions to the host coding agent. Confirm activation in your agent's skill list. To install globally or target a specific agent, use the Skills CLI `-g` and `-a` options.
+
+### Option B: Full local setup (skill + bundled Cortex CLI)
+
+Requires **Node.js 22+**, Git and npm. Until an npm package is published, invoke the CLI directly from this public GitHub repository:
+
+```bash
+# Run from the project that should receive BuildSteward:
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup
+```
+
+The interactive wizard proposes detected coding agents and allows explicit selection even if none are found on PATH, whether to install at project or global scope, and (at project scope) the autonomy and optional graph mode. It never downloads or activates Codebase Memory MCP itself.
+
+Automation / headless setup with explicit choices:
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
+  --scope project --agents opencode,codex --mode approval --graph off --yes
+```
+
+Preview changes without writing anything:
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup \
+  --scope project --agents codex --dry-run
+```
+
+**What full setup does:** copies the portable skill and a **small, self-contained local CLI runtime** into the agent's recognized skills directory. It also creates `.buildsteward/config.json` for project installs (unless it already exists). No global `npm link`, background daemon, or service is needed. Project installs are explicitly requested by the user; review files before committing an installed skill to a repository.
+
+For `--scope global`, skill and runtime are installed under the current user's agent skill directories, but **no project config is written**. Initialize each project separately with the runtime CLI when you want a project-specific autonomy policy.
+
+Supported agent directories (subject to each host's skill discovery configuration):
+
+| Agent | Project | Global |
+|---|---|---|
+| OpenCode | `.agents/skills/buildsteward` | `~/.config/opencode/skills/buildsteward` |
+| Codex | `.agents/skills/buildsteward` | `~/.agents/skills/buildsteward` |
+| Claude Code | `.claude/skills/buildsteward` | `~/.claude/skills/buildsteward` |
+| Cursor | `.cursor/skills/buildsteward` | `~/.cursor/skills/buildsteward` |
+
+OpenCode and Codex can share one project-level `.agents/skills/buildsteward` directory. Host-specific permissions and runtime activation remain the responsibility of each agent; directory presence alone is not proof the skill is active.
+
+### Doctor, update, rollback, uninstall
+
+Use the same `npx ... buildsteward` prefix (or the CLI binary from a local checkout):
+
+```bash
+# Verify installation files and configured project state
+buildsteward doctor --scope project --agents codex,opencode
+
+# Re-run setup to update a BuildSteward-managed installation
+buildsteward setup --scope project --agents codex,opencode --yes
+
+# Restore the previous managed installation from a local backup
+buildsteward rollback --scope project --agents codex,opencode
+
+# Remove only a BuildSteward-managed installation
+buildsteward uninstall --scope project --agents codex,opencode
+```
+
+For a CLI temporarily executed via `npx`, use that same full `npx --yes --package=github:hamskillah/buildsteward buildsteward` prefix, not a bare `buildsteward` unless it is on `PATH`.
+
+Setup **does not overwrite another tool's skill installation**. Replacing a managed skill that users edited requires `--force`; previous files are backed up rather than discarded. `uninstall` does not delete the project's `.buildsteward/config.json`, project decisions, or checkpoint. `doctor` reports files and runtime presence; `doctor --strict` exits with an error for missing or modified installs (useful in CI). Neither mode proves an agent actually loaded or obeyed the skill.
+
+See [Installation Guide](docs/INSTALLATION.md) for details, recovery, and local/offline setup. Review [Release Quality Gates](docs/RELEASE-QUALITY.md) for the distinction between tested installation files and actual model/agent behavior.
+
+### Optional CLI skill-only setup
+
+If you need a managed skill installation without a bundled Cortex runtime, pass `--skill-only` to `buildsteward setup`. For a pure skill experience without the BuildSteward CLI, prefer `npx skills add` instead. These installers own different files; do not update a Skills CLI installation with the BuildSteward installer.
+
+```bash
+npx --yes --package=github:hamskillah/buildsteward buildsteward setup --agents codex --skill-only --yes
+```
+
+**Installation guarantees:** `doctor --strict` verifies files and install fingerprints, not host activation. The installer does not automatically enable an agent's permission policies, and approval ledger entries are not trusted authorization tokens. Runtime directory scanning is intentionally not a substitute for checking your actual agent configuration.
+
+## Running the local CLI
+
+If you cloned the repository or installed the full bundle, the CLI can be called directly:
+
+```bash
+# From the BuildSteward source checkout:
 node bin/buildsteward.js help
 npm test
 
-# Initialize an existing project, using an absolute or relative path:
+# Full setup bundle: adapt to installed agent and path
+node .agents/skills/buildsteward/runtime/bin/buildsteward.js --root . inspect
+
+# Common tasks
 node bin/buildsteward.js --root /path/to/project init --mode approval
-
-# Optional: full autonomous decision mode
-node bin/buildsteward.js --root /path/to/project config set autonomy.mode autonomous
-
-# Inspect repo and select task workflow
 node bin/buildsteward.js --root /path/to/project inspect
 node bin/buildsteward.js route "Fix authentication bug"
-
-# Browse small relevant knowledge articles
 node bin/buildsteward.js library search "dependency security"
-node bin/buildsteward.js library show dependency-selection --detail
-
-# Evaluate candidate technologies; example scores are illustrative, not verified facts
 node bin/buildsteward.js decide evaluate --file examples/decision.json
-node bin/buildsteward.js --root /path/to/project decide record --file examples/decision.json
-
-# Research an *exact published version* (requires network or cache)
 node bin/buildsteward.js --root /path/to/project deps inspect --ecosystem npm --name react --version 18.2.0
-
-# Continue work between agents/sessions
-node bin/buildsteward.js --root /path/to/project checkpoint save --file examples/checkpoint.json
-node bin/buildsteward.js --root /path/to/project checkpoint show
 ```
 
-The CLI prints **compact JSON** by default to reduce token overhead. Add `--pretty` to a command for human-readable output. CLI configuration and local evidence cache are kept in the target project's `.buildsteward/` directory; that directory is excluded by this repository's `.gitignore`, but other projects must add it to their ignore rules if desired. Do not store secrets in checkpoint/evidence fields.
-
-## Agent Skills installation
-
-The portable skill is in [`skills/buildsteward/`](skills/buildsteward/). Copy it to the agent's documented Agent Skills location, for example a compatible project's `.agents/skills/buildsteward/`. Host-specific discovery and tool permissions differ across agents. The skill remains useful without the CLI, but deterministic checks and local state require the CLI commands available on PATH (or a wrapper with its actual absolute path).
-
-To make the CLI available on PATH in your local development environment:
-
-```bash
-# Inside BuildSteward repo
-npm link
-buildsteward help
-```
-
-`npm link` modifies your local npm global links. It is optional. This repository is **not published** to npm or GitHub by these commands.
+The CLI prints compact JSON by default. The `.buildsteward/` directory holds local config, decisions, approvals, caches, and checkpoints. Add it to a consuming project's `.gitignore` if needed, and never store secrets there.
 
 ## Modes
 

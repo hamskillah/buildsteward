@@ -10,8 +10,10 @@ import { requestApproval, resolveApproval, checkAction, listApprovals } from './
 import { setCheckpoint, getCheckpoint } from './checkpoint.js';
 import { recordProgress } from './progress.js';
 import { graphStatus, graphSearch } from './graph.js';
+import { setupInstallation, installationDoctor, uninstallInstallation, rollbackInstallation, detectAgents } from './setup.js';
+import { createInterface } from 'node:readline/promises';
 
-const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
+const HELP = `BuildSteward: local-first developer workflow and engineering intelligence\n\nUsage: node bin/buildsteward.js [--root PATH] <command> [args]\n\n  setup [--scope project|global] [--agents auto|opencode,codex,claude,cursor]\n        [--mode autonomous|approval] [--graph off|auto|on] [--skill-only] [--dry-run] [--force]\n  doctor [--scope project|global] [--agents opencode,codex] [--strict]\n  uninstall --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  rollback --agents opencode,codex [--scope project|global] [--dry-run] [--force]\n  init [--mode autonomous|approval]\n  config show | set KEY VALUE\n  inspect\n  route "task description"\n  decide evaluate --file path.json\n  decide record --file path.json\n  decide approve ID --actor LABEL [--selection NAME] [--reason TEXT]\n  decide reject ID --actor LABEL\n  decide list\n  deps inspect --ecosystem npm --name react --version 18.2.0 [--offline]\n  library list | search "words" | show ID [--detail]\n  approvals request --action ACTION --target TARGET --reason TEXT\n  approvals approve ID --actor LABEL | reject ID --actor LABEL | list\n  guard --action ACTION --target TARGET\n  checkpoint show | save --file path.json\n  progress record --action TEXT --outcome progress|no_progress|blocked [--evidence TEXT]\n  graph status | search "query" [--project NAME]\n\nAll output is JSON (except help). Network is used only by deps inspect.\n`;
 function param(args, key, fallback) {
   const i = args.indexOf(key); if (i === -1) return fallback;
   if (i + 1 >= args.length || args[i + 1].startsWith('--')) throw new Error('Missing value for '+key);
@@ -27,6 +29,43 @@ export async function main(args) {
   const [command, sub, ...rest] = args;
   let result;
   switch(command) {
+    case 'setup': {
+      let agents = param(args,'--agents','auto');
+      if (agents === 'auto') {
+        const detected = await detectAgents();
+        // Agent binaries are not always on PATH even when the host supports skills.
+        // Interactive setup can ask for an explicit target instead of failing early.
+        if (!detected.length && (!process.stdin.isTTY || args.includes('--yes') || args.includes('--dry-run')))
+          throw new Error('No coding agent executable detected. Pass --agents opencode,codex,claude,cursor explicitly.');
+        agents = detected.length ? detected : '';
+      }
+      let scope=param(args,'--scope','project'), mode=param(args,'--mode','approval'), graph=param(args,'--graph','off');
+      if(process.stdin.isTTY && !args.includes('--yes') && !args.includes('--dry-run')){
+        const rl=createInterface({input:process.stdin,output:process.stderr});
+        try {
+          scope=(await rl.question(`Installation scope [${scope}]: `)).trim()||scope;
+          agents=(await rl.question(`Agents (opencode,codex,claude,cursor) [${Array.isArray(agents)?agents.join(','):agents||'select'}]: `)).trim()||agents;
+          if(scope==='project') {
+            mode=(await rl.question(`Decision mode [${mode}]: `)).trim()||mode;
+            graph=(await rl.question(`Optional graph [${graph}]: `)).trim()||graph;
+          }
+          const confirmation=(await rl.question('Install BuildSteward into selected agent directories? [y/N] ')).trim().toLowerCase();
+          if(!['y','yes'].includes(confirmation)) throw new Error('Setup cancelled');
+        } finally {rl.close();}
+      }
+      result=await setupInstallation({root,scope,agents,mode,graph,dryRun:args.includes('--dry-run'),force:args.includes('--force'),withRuntime:!args.includes('--skill-only')});
+      break;
+    }
+    case 'doctor': {
+      result = await installationDoctor({root,scope:param(args,'--scope','project'),agents:param(args,'--agents')});
+      if(args.includes('--strict') && !result.healthy) {
+        const failures=result.agents.filter(a=>!a.healthy).map(a=>`${a.agent}:${a.status}`);
+        throw new Error(`Installation check failed: ${failures.join(', ')}`);
+      }
+      break;
+    }
+    case 'uninstall': result = await uninstallInstallation({root,scope:param(args,'--scope','project'),agents:required(args,'--agents'),dryRun:args.includes('--dry-run'),force:args.includes('--force')}); break;
+    case 'rollback': result = await rollbackInstallation({root,scope:param(args,'--scope','project'),agents:required(args,'--agents'),dryRun:args.includes('--dry-run'),force:args.includes('--force')}); break;
     case 'init': result = await initialize(root, param(args,'--mode','approval')); break;
     case 'config':
       if(sub==='show') result = await readConfig(root);

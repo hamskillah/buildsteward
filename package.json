@@ -3,13 +3,40 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Local-first engineering judgment tooling for AI coding agents",
-  "engines": {"node": ">=22"},
-  "bin": {"buildsteward": "./bin/buildsteward.js"},
+  "description": "Portable, evidence-driven developer workflow and local decision tooling for AI coding agents",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "buildsteward": "./bin/buildsteward.js"
+  },
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check bin/buildsteward.js && node --test tests/*.test.js",
-    "smoke": "node bin/buildsteward.js help"
+    "check": "node --check bin/buildsteward.js && node scripts/check-skill.js && node --test tests/*.test.js && node scripts/package-smoke.js",
+    "smoke": "node bin/buildsteward.js help",
+    "package:smoke": "node scripts/package-smoke.js"
   },
-  "files": ["bin", "src", "skills", "knowledge", "docs"]
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    "knowledge",
+    "docs"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hamskillah/buildsteward.git"
+  },
+  "homepage": "https://github.com/hamskillah/buildsteward#readme",
+  "bugs": {
+    "url": "https://github.com/hamskillah/buildsteward/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "ai-coding",
+    "engineering",
+    "developer-workflow",
+    "decision-support"
+  ]
 }
