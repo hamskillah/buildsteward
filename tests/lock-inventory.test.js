@@ -65,8 +65,20 @@ test('malformed JSON and oversized lockfiles are rejected before inventory',asyn
   await project(undefined,async dir=>{
     const file=path.join(dir,'package-lock.json');
     await fs.writeFile(file,'{bad');
-    assert.equal((await inventoryNpmLock(dir)).reason,'invalid_json');
+    assert.equal((await inventoryNpmLock(dir)).reason,'invalid_json_or_encoding');
     await fs.writeFile(file,Buffer.alloc(8_000_001,32));
     await assert.rejects(()=>inventoryNpmLock(dir),/exceeds 8 MB/);
+  });
+});
+
+test('invalid version metadata and encoding do not leak into inventory output', async () => {
+  await project({lockfileVersion:{oversized:'x'.repeat(100_000)}}, async dir => {
+    const result = await inventoryNpmLock(dir);
+    assert.equal(result.status, 'invalid_lockfile');
+    assert.ok(JSON.stringify(result).length < 200);
+    const invalid = Buffer.from('{"lockfileVersion":3,"packages":{"":{}},"name":"x"}');
+    invalid[invalid.lastIndexOf(120)] = 255;
+    await fs.writeFile(path.join(dir, 'package-lock.json'), invalid);
+    assert.equal((await inventoryNpmLock(dir)).status, 'invalid_lockfile');
   });
 });
