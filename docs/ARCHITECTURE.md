@@ -56,7 +56,7 @@ Future research connectors must comply with user policy, record evidence provena
 
 ## Intentional exclusions (not silently complete)
 
-- No authenticated human-approval channel.
+- Trusted host authorization is available as a library. Production host transport and authenticated operator channel require deployment-specific integration.
 - No direct deployment or model-executing project builder; the new work ledger coordinates agent-performed tasks.
 - No built-in MCP server; CLI adapter to CBM is optional.
 - No broad transitive dependency analysis or automatic candidate discovery yet.
