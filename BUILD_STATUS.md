@@ -57,7 +57,7 @@ Pi used a skill-only install plus the standalone CLI. Headless Pi discovered the
 
 ## npm release
 
-The npm registry exposes `@hamskillah/buildsteward@0.1.0` as `latest`. Its integrity metadata matches the tarball packed from commit `892667c`. A clean registry installation remains a separate availability check.
+The npm registry exposes `@hamskillah/buildsteward@0.1.0` as `latest`. Its integrity metadata matches the tarball packed from commit `892667c`. A clean install from the registry in the release executor resolved the version but got HTTP 404 fetching the public tarball. Global installation of the locally packed artifact and the interactive console passed.
 
 ## Not verified or not implemented
 - An authenticated Cursor run remains unverified. Automatic skill selection is not established across tasks or agents.
