@@ -36,27 +36,37 @@ export async function inspectProjectDependencies(root) {
   if(![1,2,3].includes(lock.value.lockfileVersion))return {ecosystem:'npm',status:'unsupported_lockfile_version',lockfileVersion:lock.value.lockfileVersion};
   const lockPackages=lock.value.packages||{};
   const rootPkg=lockPackages['']||null;
-  const missing=[],mismatch=[],direct=[];
+  const canVerifyRoot=lock.value.lockfileVersion!==1 && rootPkg && typeof rootPkg==='object' && !Array.isArray(rootPkg);
+  const missing=[],mismatch=new Set(),direct=[];
+  if(canVerifyRoot) {
+    for(const field of fields) {
+      const ranges=rootPkg[field] ?? {};
+      if(typeof ranges!=='object' || Array.isArray(ranges)) {
+        return {ecosystem:'npm',status:'invalid_lockfile',reason:'invalid_root_declarations'};
+      }
+      for(const [name,range] of Object.entries(ranges)) {
+        if(!Object.hasOwn(pkg.value[field] ?? {},name) || pkg.value[field][name]!==range) mismatch.add(name);
+      }
+    }
+  }
   for(const entry of declared.values()){
     const target=lockPackages[`node_modules/${entry.name}`]||lock.value.dependencies?.[entry.name]||null;
     const lockRange=rootPkg?.[entry.kind]?.[entry.name];
     if(!target?.version)missing.push(entry.name);
-    if(rootPkg && lockRange!==entry.range)mismatch.push(entry.name);
+    if(canVerifyRoot && lockRange!==entry.range)mismatch.add(entry.name);
     direct.push({...entry,lockedVersion:target?.version||null});
   }
   const count=Object.keys(lockPackages).filter(x=>x!==''&&x.startsWith('node_modules/')).length||Object.keys(lock.value.dependencies||{}).length;
   const warnings=[];
   if(missing.length)warnings.push('Declared dependency missing from lockfile');
-  if(mismatch.length)warnings.push('Lockfile root declarations differ from package.json');
-  const hasMismatch=missing.length>0||mismatch.length>0;
-  // v1 lacks root manifest declarations; v2/v3 require a valid root package.
-  const canVerifyRoot=lock.value.lockfileVersion!==1 && rootPkg && typeof rootPkg==='object' && !Array.isArray(rootPkg);
+  if(mismatch.size)warnings.push('Lockfile root declarations differ from package.json');
+  const hasMismatch=missing.length>0||mismatch.size>0;
   if(!canVerifyRoot)warnings.push('Lockfile does not provide verifiable root declarations');
   return {
     ecosystem:'npm',status:hasMismatch?'inconsistent':canVerifyRoot?'consistent_manifest':'unverified_manifest',
     lockfileVersion:lock.value.lockfileVersion,
     counts:{direct:declared.size,lockedPackageEntries:count},
-    missing:missing.slice(0,30),mismatchedRanges:mismatch.slice(0,30),
+    missing:missing.slice(0,30),mismatchedRanges:[...mismatch].slice(0,30),
     directPreview:direct.slice(0,20),truncatedDirectPreview:direct.length>20,
     manifestDigest:pkg.hash,lockfileDigest:lock.hash,
     warnings,checksNotPerformed:['security advisory scanning','license compatibility','transitive vulnerability verification','runtime compatibility'],

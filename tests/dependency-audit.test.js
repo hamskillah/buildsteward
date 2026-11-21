@@ -41,3 +41,14 @@ test('incomplete lockfiles cannot establish manifest consistency',async()=>env(a
     assert.notEqual((await inspectProjectDependencies(root)).status,'consistent_manifest');
   }
 }));
+
+test('stale declarations present only in the lockfile are inconsistent', async () => env(async root => {
+  await fs.writeFile(path.join(root, 'package.json'), '{}');
+  await fs.writeFile(path.join(root, 'package-lock.json'), JSON.stringify({
+    lockfileVersion:3,
+    packages:{'':{dependencies:{old:'1.0.0'}},'node_modules/old':{version:'1.0.0'}}
+  }));
+  const result = await inspectProjectDependencies(root);
+  assert.equal(result.status, 'inconsistent');
+  assert.deepEqual(result.mismatchedRanges, ['old']);
+}));
