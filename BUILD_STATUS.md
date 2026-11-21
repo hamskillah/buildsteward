@@ -14,10 +14,12 @@ BuildSteward has a working **portable Agent Skill, local Cortex CLI, guided inst
 - High-risk `guard` checks **always deny** without trusted host authorization, even after a local approval ledger is marked approved.
 - Dependency metadata: deps.dev and OSV parsing plus offline cache are tested with mocks.
 
+- Agent discovery was verified with Codex CLI 0.172.0-alpha.2 (`skills/list` reported BuildSteward enabled) and OpenCode 1.19.6 (`opencode debug skill --pure` listed the installed skill). The Skills CLI 1.9.0 installed from the public GitHub repository and listed Codex, OpenCode, and Claude Code targets.
+
 ## Not verified or not implemented
 
 - npm registry publication: npm publisher login was verified and the package dry run passed. The package is held for further build and agent validation.
-- Real activated OpenCode/Codex/Claude Code/Cursor hosts: Codex CLI was available, but a read-only filesystem error stopped its app server before session startup. OpenCode, Claude Code and Cursor activation have no verified results.
+- Model tasks using the skill and real Claude Code/Cursor discovery remain unverified.
 - Live deps.dev/OSV network access and real Codebase Memory MCP provider: unavailable to offline local tests.
 - Trusted host-enforced approval, credentials isolation, production deployment, security pentest, comprehensive transitive dependency/lockfile vulnerability scanning.
 - Independent end-to-end LLM task execution: developer loop coordinates work performed by the coding agent, but does not launch models or execute arbitrary project plans autonomously.

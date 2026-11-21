@@ -22,7 +22,6 @@ BuildSteward is an **engineering support skill and local CLI**, not a self-runni
 ## Criteria for npm publication (separate authorization)
 
 - Choose and verify an available npm package name and publisher identity.
-- Remove the development-only `private: true` guard **only as part of an authorized publication change**.
 - Set an intentional semantic version, supported Node engines, package exports/bin and `publishConfig.access: public` where relevant.
 - Use npm trusted publishing/OIDC or appropriately restricted credentials managed outside repository content.
 - Re-run `npm pack --dry-run`, isolated install tests and automated release gates against the exact package to be published.
@@ -30,11 +29,11 @@ BuildSteward is an **engineering support skill and local CLI**, not a self-runni
 
 ## Cross-agent activation matrix
 
-| Target | Location tested by installer | Activation proven in live agent? |
-|---|---|---|
-| OpenCode | `.agents/skills/`, `~/.config/opencode/skills/` | Not yet |
-| Codex | `.agents/skills/`, `~/.agents/skills/` | Not yet |
-| Claude Code | `.claude/skills/`, `~/.claude/skills/` | Not yet |
-| Cursor | `.cursor/skills/`, `~/.cursor/skills/` | Not yet |
+| Target | Installer layout | Runtime discovery | Model task |
+|---|---|---|---|
+| OpenCode | Project and global | Project, passed on 1.19.6 | Pending |
+| Codex | Project and global | Project, passed on 0.172.0-alpha.2 | Pending |
+| Claude Code | Project and global | Pending | Pending |
+| Cursor | Project and global | Pending | Pending |
 
-The file paths are covered by installer tests. Live activation, actual model behavior and host permission enforcement require host-specific end-to-end testing before those claims can be made.
+Test discovery with a fresh project. Use `opencode debug skill` or the Codex app server's `skills/list` response. Confirm that the reported path belongs to the project and that the skill is enabled where the host reports that field. To verify activation, run a fresh model session on a disposable project, ask it to use BuildSteward for a small engineering task, and record evidence of the skill being loaded, the actual checks run, and the final outcome. Record the agent version, model, permission mode and elapsed time. Installer checks and discovery results are separate from model behavior.

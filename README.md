@@ -1,10 +1,23 @@
 # BuildSteward
 
-**Engineering discipline and evidence-driven decisions for AI coding agents.**
+[![Checks](https://github.com/hamskillah/buildsteward/actions/workflows/check.yml/badge.svg)](https://github.com/hamskillah/buildsteward/actions/workflows/check.yml)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-BuildSteward gives coding agents a developer-first workflow, decision records, dependency evidence, scoped permission workflow, short engineering recipes, progress-loop detection, project checkpoints and optional Codebase Memory MCP graph search.
+**A practical engineering skill for coding agents.** BuildSteward helps your agent inspect the project before editing, weigh dependencies with evidence, and report the checks it actually ran.
 
-> **Status: working foundation, not a production-ready autonomous runtime.** This repository has a functional local CLI and a portable Agent Skill. It does not independently execute development tasks, enforce permissions over an unrestricted shell, guarantee software security, or make all AI models equally capable.
+## Get started
+
+With Node.js 22.20 or later, run this from your project:
+
+```bash
+npx skills add hamskillah/buildsteward --skill buildsteward
+```
+
+Choose your agent, then open a fresh session. Try: “Use BuildSteward to review this project’s dependency choices. Start with local evidence and tell me what still needs verification.”
+
+Start with the skill alone. Add the [optional local CLI](docs/INSTALLATION.md#full-setup-from-public-github-source) when you want persistent work plans, decision records, or npm lockfile inventory.
+
+[Installation and troubleshooting](docs/INSTALLATION.md) · [Quickstart bahasa Indonesia](docs/QUICKSTART-ID.md) · [Verified build status](BUILD_STATUS.md)
 
 ## Why
 
@@ -23,28 +36,16 @@ A coding agent should behave like a professional product engineer: **understand 
 | Steward Library | Eight small searchable engineering recipes with source references |
 | Checkpoints | Project state in `.buildsteward/checkpoint.json` |
 | Developer work ledger | Bounded task DAG, compact resume context, explicit verification and loop recovery |
-| Offline npm lockfile check | Manifest/lock consistency analysis, not a vulnerability scan |
+| Offline npm lockfile tools | Manifest consistency and bounded inventory of nested package records |
 | Progress Sentinel | Detects consecutive identical no-progress fingerprints |
 | Optional memory graph | CLI adapter to existing `codebase-memory-mcp`, disabled by default |
 | Tests | Node built-in test runner; no npm runtime dependencies |
 
-## npm publication status
+## Optional CLI and managed setup
 
-The package `@hamskillah/buildsteward` has **not** been published to the npm registry yet. A new package needs an initial authenticated bootstrap by its npm scope owner before the usual Trusted Publisher configuration can be used. Subsequent releases can use our manual SHA-locked GitHub Actions OIDC workflow. See [release instructions](docs/RELEASE-NPM.md). Until a live npm install is verified, use the GitHub/local installation path below.
+The full setup installs the skill and a local CLI that work without a hosted BuildSteward service. This setup is managed separately from the Skills CLI. Choose one installer per agent and scope.
 
-## Install BuildSteward
-
-There are **two supported installation modes**. Both work independently, with no mandatory cloud service.
-
-### Option A: Skill only (lightweight, no Cortex runtime)
-
-```bash
-npx skills add hamskillah/buildsteward --skill buildsteward
-```
-
-This uses the [Skills CLI](https://github.com/vercel-labs/skills) to install the portable workflow. It does **not** install the CLI or grant permissions to the host coding agent. Confirm activation in your agent's skill list. To install globally or target a specific agent, use the Skills CLI `-g` and `-a` options.
-
-### Option B: Full local setup (skill + bundled Cortex CLI)
+### Full setup (skill + bundled Cortex CLI)
 
 Requires **Node.js 22+**, Git and npm. Until an npm package is published, invoke the CLI directly from this public GitHub repository:
 
