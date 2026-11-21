@@ -9,7 +9,7 @@ const isObject=v=>v!==null && typeof v==='object' && !Array.isArray(v);
 const shortString=(v,max)=>typeof v==='string' && v.length>0 && v.length<=max ? v : null;
 const platform=v=>Array.isArray(v) ? v.filter(x=>typeof x==='string' && x.length<=80).slice(0,20) : null;
 
-function packageName(location) {
+export function packageName(location) {
   const parts=location.split('/');
   const index=parts.lastIndexOf('node_modules');
   if(index<0) return null;
@@ -19,7 +19,7 @@ function packageName(location) {
   return null;
 }
 
-export async function inventoryNpmLock(root) {
+export async function readNpmLock(root) {
   let handle;
   try { handle=await fs.open(path.join(root,'package-lock.json'),constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)); }
   catch(error) { if(error.code==='ENOENT') return {ecosystem:'npm',status:'lockfile_missing'}; throw error; }
@@ -48,6 +48,13 @@ export async function inventoryNpmLock(root) {
   if (!Number.isSafeInteger(lock.lockfileVersion) || lock.lockfileVersion < 1) return {ecosystem:'npm',status:'invalid_lockfile',reason:'invalid_lockfile_version'};
   if(![2,3].includes(lock.lockfileVersion)) return {ecosystem:'npm',status:'unsupported_lockfile_version',lockfileVersion:lock.lockfileVersion ?? null};
   if(!isObject(lock.packages) || !isObject(lock.packages[''])) return {ecosystem:'npm',status:'invalid_lockfile',reason:'missing_packages_or_root'};
+  return { lock, lockfileDigest:createHash('sha256').update(bytes).digest('hex') };
+}
+
+export async function inventoryNpmLock(root) {
+  const result = await readNpmLock(root);
+  if (!result.lock) return result;
+  const { lock, lockfileDigest } = result;
   const preview=[],counts={entries:0,unresolved:0,optional:0,development:0};
   for(const [location,data] of Object.entries(lock.packages)) {
     if(location==='' || !location.split('/').includes('node_modules')) continue;
@@ -63,7 +70,7 @@ export async function inventoryNpmLock(root) {
     if(preview.length<MAX_PREVIEW) preview.push({path:location.slice(0,512),name:recordedName,nameSource:isObject(data) && data.name!==undefined?'lockfile':'install_path',version,status,optional:data?.optional===true,dev:data?.dev===true,os:platform(data?.os),cpu:platform(data?.cpu)});
   }
   return {ecosystem:'npm',status:counts.unresolved?'partial':'inventoried',lockfileVersion:lock.lockfileVersion,
-    lockfileDigest:createHash('sha256').update(bytes).digest('hex'),counts,entries:preview,truncated:counts.entries>preview.length,
+    lockfileDigest,counts,entries:preview,truncated:counts.entries>preview.length,
     checksNotPerformed:['dependency edge resolution','vulnerability scanning','license policy','runtime compatibility','package integrity verification'],
     note:'Entries are lockfile records, not proof of an installed dependency graph or security. Names inferred from install paths may be npm aliases. Workspace links and missing versions remain unresolved.'};
 }
