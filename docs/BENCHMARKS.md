@@ -29,7 +29,7 @@ done
 
 Use `audit` in place of `bugfix` to test an offline assessment with known lockfile inconsistencies. The grader rejects edits to protected fixture inputs, unexpected top-level output, and unsupported vulnerability claims. Bugfix grading executes JavaScript from the fixture, so grade inside the same disposable environment. The grader checks task outcomes. It does not sandbox fixture code or provide a tamper-resistant result. Check the JSON `pass` field for the outcome. A nonzero command exit indicates a tool or invocation error.
 
-Two additional fixtures exercise engineering judgment. `review` grades a concrete contract violation and rejects edits to review inputs. `compat` checks that a new feature preserves the exact legacy output, using a verifier outside the agent workspace. The prompts specify outcomes and scope.
+Three additional fixtures exercise engineering judgment. `review` grades a concrete contract violation and rejects edits to review inputs. `compat` checks that a new feature preserves the exact legacy output, using a verifier outside the agent workspace. The `release` task asks for a publish decision using deliberately stale CI evidence, a missing install smoke, and absent authorization. The grader rejects a false publish decision, changes to the evidence, and unexpected top-level output. The OpenCode harness disables Bash for this fixture and allows the same read tools and the one requested output file across all arms.
 
 For each attempt record the Git commit, task, arm, agent and model versions, elapsed time, functional score, observed skill and CLI use, tool calls, retries, and provider-reported input, output, and cached tokens. Inspect logs for actions outside the task and for whether the agent actually ran its checks. Repeat with fresh sessions and rotate arm order. Report unknown metrics as unknown. Keep a separate treatment if you explicitly require use of BuildSteward, since the default prompt is the same in every arm.
 
@@ -71,11 +71,38 @@ On 2026-11-21, OpenCode 1.19.6 ran the published fixtures at commit `a446d19` on
 
 All 12 attempts passed the independent fixture grader. Both models used fewer total tokens in the bundled arm on the audit fixture, where both used the CLI. On bugfix, the bundled arm used fewer total tokens for DeepSeek and more for GLM, with no observed CLI call in either case. OpenCode estimated USD 0.02690 across these runs. The aggregate includes cached requests and should be treated as a client-side estimate. One attempt per arm leaves model variance, cache effects and differences on harder tasks unmeasured. The pilot does not establish general token savings or improved task completion.
 
+### Release decision pilot
+
+On 2026-11-23, OpenCode 1.19.6 with DeepSeek V4.1 Flash on Go ran `node benchmarks/opencode.js release opencode-go/deepseek-v4.1-flash ./release-run`. Each arm independently returned `hold`, identified all three blockers, and preserved the input evidence. The harness disabled Bash for all arms.
+
+| Arm | Grader | Skill loaded | Total tokens | Cached read | Tool calls | Tool errors | Seconds |
+|---|---|---|---:|---:|---:|---:|---:|
+| Baseline | Pass | No | 44,103 | 37,504 | 16 | 3 | 30.94 |
+| Skill | Pass | Yes | 32,664 | 25,216 | 10 | 0 | 24.30 |
+| Skill + CLI | Pass | Yes | 131,901 | 108,288 | 26 | 0 | 47.83 |
+
+The baseline's errors were attempts to load the absent skill. The bundled arm inspected more files and had the highest workload of the three. No CLI execution was enabled for this review task. The grader also rejects synthetic reports that propose an unauthorized release or claim the candidate CI passed.
+
 ## Claude Code compatibility with OpenCode Go
 
 Claude Code 2.1.330 used DeepSeek V4.1 Flash through the [OpenCode Go Anthropic-compatible gateway](https://opencode.ai/docs/console/harnesses/claude-code/). An exploratory bundled-arm audit passed the independent grader in 55.53 seconds. Its event stream recorded skill discovery and activation. The attempted CLI commands in that audit produced no verified CLI result. The environment was replaced before the other two arms could be verified, so that trial has no usable cross-arm comparison.
 
 A separate targeted smoke test used a fresh `audit` fixture in the bundled arm and explicitly requested skill activation followed by `node .claude/skills/buildsteward/runtime/bin/buildsteward.js deps inventory`. Claude Code ran in print mode with the `Read`, `Skill` and `Bash` tools available and a permission rule for that inventory command. Its stream showed skill discovery, a native `Skill` call, and a successful tool result containing the lockfile digest. The run completed in 13.69 seconds. This verifies the installed skill and one bundled CLI path with the Go gateway.
+
+## Matched Claude Code runs
+
+On 2026-11-23, Claude Code 2.1.330 with DeepSeek V4.1 Flash via OpenCode Go ran all three arms on the offline audit and code review fixtures from commit `e5e460b`. Each arm had one fresh Git workspace, one isolated agent home, the unchanged fixture prompt, and an 80-second wall time limit. Arms ran in the order shown for each task. Claude Code ran in print mode with `dontAsk` and only explicitly allowed tools. It could read, search, load skills, and edit the fixture's requested output. Bash was limited to the bundled `deps project` and `deps inventory` calls. The independent fixture grader scored the resulting files. Input, output, and cache reads are separate provider fields. Cache writes were zero.
+
+| Task | Arm | Grader | Skill loaded | CLI success | Input | Output | Cache read | Tools | Seconds |
+|---|---|---|---|---|---:|---:|---:|---:|---:|
+| Audit | Baseline | Pass | No | No | 10,263 | 3,010 | 51,328 | 9 | 39.93 |
+| Audit | Skill | Pass | Yes | No | 11,328 | 2,638 | 73,216 | 12 | 46.90 |
+| Audit | Skill + CLI | Pass | Yes | No | 36,539 | 6,621 | 214,400 | 26 | 76.13 |
+| Review | Skill + CLI | Pass | No | No | 10,812 | 1,975 | 42,240 | 7 | 29.14 |
+| Review | Baseline | Pass | No | No | 8,394 | 1,314 | 32,256 | 6 | 23.90 |
+| Review | Skill | Pass | Yes | No | 9,714 | 1,218 | 40,704 | 6 | 23.66 |
+
+The bundled audit was the slowest arm and used the most input and output tokens. No successful CLI use was observed in these six attempts. The separately prompted Claude Code smoke above is the evidence for successful CLI execution. This sample establishes comparable task scores for these cases and leaves run-to-run variability and performance on larger tasks open.
 
 ## Compare revisions of the skill
 

@@ -1,0 +1,16 @@
+{
+  "requestedRelease": {
+    "version": "1.4.0",
+    "commit": "836cfd828b725349c01b888e5c0b42f68306d217f"
+  },
+  "workflow": {
+    "commit": "001ab49c8bb67d01da1619f24f9e7e894ce491ec",
+    "result": "success"
+  },
+  "packageChecks": {
+    "commit": "836cfd828b725349c01b888e5c0b42f68306d217f",
+    "packDryRun": "success",
+    "freshInstall": "not_run"
+  },
+  "releaseAuthorization": "absent"
+}

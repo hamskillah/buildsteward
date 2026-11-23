@@ -19,14 +19,14 @@ export function packageName(location) {
   return null;
 }
 
-export async function readNpmLock(root) {
+export async function readDependencyJson(root, filename, ecosystem) {
   let handle;
-  try { handle=await fs.open(path.join(root,'package-lock.json'),constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)); }
-  catch(error) { if(error.code==='ENOENT') return {ecosystem:'npm',status:'lockfile_missing'}; throw error; }
+  try { handle=await fs.open(path.join(root,filename),constants.O_RDONLY | (constants.O_NONBLOCK ?? 0)); }
+  catch(error) { if(error.code==='ENOENT') return {ecosystem,status:'lockfile_missing'}; throw error; }
   let bytes;
   try {
     const stat = await handle.stat();
-    if (!stat.isFile()) return {ecosystem:'npm',status:'invalid_lockfile',reason:'not_regular_file'};
+    if (!stat.isFile()) return {ecosystem,status:'invalid_lockfile',reason:'not_regular_file'};
     if (stat.size > MAX_BYTES) throw new Error('Lockfile exceeds 8 MB limit');
     const buffer = Buffer.allocUnsafe(Math.min(MAX_BYTES + 1, stat.size + 1));
     let length = 0;
@@ -42,13 +42,20 @@ export async function readNpmLock(root) {
   try {
     lock = JSON.parse(new TextDecoder('utf-8', {fatal:true}).decode(bytes));
   } catch {
-    return {ecosystem:'npm',status:'invalid_lockfile',reason:'invalid_json_or_encoding'};
+    return {ecosystem,status:'invalid_lockfile',reason:'invalid_json_or_encoding'};
   }
-  if(!isObject(lock)) return {ecosystem:'npm',status:'invalid_lockfile',reason:'invalid_root'};
+  if(!isObject(lock)) return {ecosystem,status:'invalid_lockfile',reason:'invalid_root'};
+  return { lock, lockfileDigest:createHash('sha256').update(bytes).digest('hex') };
+}
+
+export async function readNpmLock(root) {
+  const result = await readDependencyJson(root, 'package-lock.json', 'npm');
+  if (!result.lock) return result;
+  const { lock } = result;
   if (!Number.isSafeInteger(lock.lockfileVersion) || lock.lockfileVersion < 1) return {ecosystem:'npm',status:'invalid_lockfile',reason:'invalid_lockfile_version'};
   if(![2,3].includes(lock.lockfileVersion)) return {ecosystem:'npm',status:'unsupported_lockfile_version',lockfileVersion:lock.lockfileVersion ?? null};
   if(!isObject(lock.packages) || !isObject(lock.packages[''])) return {ecosystem:'npm',status:'invalid_lockfile',reason:'missing_packages_or_root'};
-  return { lock, lockfileDigest:createHash('sha256').update(bytes).digest('hex') };
+  return result;
 }
 
 export async function inventoryNpmLock(root) {

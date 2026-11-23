@@ -34,7 +34,7 @@ BuildSteward is an **engineering support skill and local CLI**, not a self-runni
 | OpenCode | Project and global | Project, passed on 1.19.6 | Passed with OpenCode Go |
 | Codex | Project and global | Project, passed on 0.172.0-alpha.2 and 0.171.0 | Passed with ChatGPT login |
 | Claude Code | Project and global | Native Skill tool, 2.1.330 | Passed with OpenCode Go |
-| Cursor | Project and global | Pending | Pending |
+| Cursor CLI | Project and global | Both scopes, passed on 2026.11.22-e9042b2 | Bundled project inventory and global skill-only read passed with Auto |
 | Pi | Project skill-only | Trusted project, 1.5.2 | Passed with OpenCode Go |
 | Hermes Agent | Global skill-only; project CLI tested separately | Native skill_view, `a3b993b9` | Bugfix passed; negative case reported correctly with an extra diagnostic command |
 

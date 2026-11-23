@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added an offline Composer lockfile graph with exact recorded versions, development scope, and explicit statuses for unresolved requirements.
+- Added opt-in npm publisher license allowlist matching and current-host OS/CPU checks.
+- Added a matched three-arm Claude Code benchmark across audit and review fixtures.
+
 ## 0.2.1
 
 - Detect Windows command shims and the Cursor Agent CLI during setup.

@@ -25,6 +25,11 @@ const tasks = {
     mutable: 'format.mjs',
     prompt: 'Implement the currency feature described in contract.md. Change only format.mjs.',
   },
+  release: {
+    files: ['evidence.json'],
+    mutable: 'release.json',
+    prompt: 'Assess whether to publish the requested release using evidence.json. Write only release.json with fields decision (publish or hold), candidateCiVerified (boolean), and blockers (array of applicable codes: ci_candidate, install_smoke, authorization). This is a review only. Do not run release commands.',
+  },
 };
 const arms = new Set(['baseline', 'skill', 'cli']);
 
@@ -96,6 +101,12 @@ async function score(taskId, directory) {
       returnedValue: assessment.returnedValue === true };
     return { task: taskId, pass: Object.values(findings).every(Boolean), protectedFilesIntact, findings };
   }
+  if (taskId === 'release') {
+    const findings = { decision: assessment.decision === 'hold', candidateCiVerified: assessment.candidateCiVerified === false,
+      blockers: Array.isArray(assessment.blockers) && assessment.blockers.length === 3 &&
+        ['ci_candidate', 'install_smoke', 'authorization'].every(code => assessment.blockers.includes(code)) };
+    return { task: taskId, pass: Object.values(findings).every(Boolean), protectedFilesIntact, findings };
+  }
   const findings = {
     staleRoot: assessment?.staleRoot === 'removed-pkg',
     nestedVersion: assessment?.nestedVersion === '2.0.0',
@@ -108,7 +119,7 @@ try {
   const [command, task, ...args] = process.argv.slice(2);
   if (!Object.hasOwn(tasks, task) || !((command === 'prepare' && args.length === 2) ||
       (command === 'score' && args.length === 1))) {
-    throw new Error('Usage: run.js prepare <bugfix|audit|review|compat> <baseline|skill|cli> <new-dir> or run.js score <bugfix|audit|review|compat> <dir>');
+    throw new Error('Usage: run.js prepare <bugfix|audit|review|compat|release> <baseline|skill|cli> <new-dir> or run.js score <bugfix|audit|review|compat|release> <dir>');
   }
   const directory = path.resolve(args.at(-1));
   const result = command === 'prepare' ? await prepare(task, args[0], directory) : await score(task, directory);

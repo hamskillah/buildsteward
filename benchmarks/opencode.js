@@ -5,7 +5,7 @@ import { performance } from 'node:perf_hooks';
 
 const fixtureRunner = path.join(import.meta.dirname, 'run.js');
 const arms = ['baseline', 'skill', 'cli'];
-const writableFiles = { bugfix: 'totals.mjs', audit: 'assessment.json', review: 'review.json', compat: 'format.mjs' };
+const writableFiles = { bugfix: 'totals.mjs', audit: 'assessment.json', review: 'review.json', compat: 'format.mjs', release: 'release.json' };
 const timeoutMs = 65_000;
 const requireSkill = process.env.BUILDSTEWARD_BENCH_REQUIRE_SKILL === '1';
 const cli = 'node .agents/skills/buildsteward/runtime/bin/buildsteward.js';
@@ -95,7 +95,7 @@ async function runArm({ task, model, arm, output }) {
     grep: 'allow',
     skill: { buildsteward: 'allow' },
     edit: { '*': 'deny', [writableFiles[task]]: 'allow' },
-    bash: {
+    bash: task === 'release' ? 'deny' : {
       'node --test': 'allow', 'node --test totals.test.mjs': 'allow',
       [dependencyCommands[0]]: 'allow', [dependencyCommands[1]]: 'allow',
     },
@@ -124,7 +124,7 @@ try {
   const order = orderArg?.split(',') ?? arms;
   if ((requireSkill && orderArg !== 'skill') || !Object.hasOwn(writableFiles, task) || !/^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:/-]*$/i.test(model ?? '') ||
       !outputPath || extra.length || (orderArg !== 'skill' && (order.length !== arms.length || !arms.every(arm => order.includes(arm))))) {
-    throw new Error('Usage: node benchmarks/opencode.js <bugfix|audit|review|compat> <provider/model> <new-directory> [baseline,skill,cli|skill]');
+    throw new Error('Usage: node benchmarks/opencode.js <bugfix|audit|review|compat|release> <provider/model> <new-directory> [baseline,skill,cli|skill]');
   }
   const version = spawnSync('opencode', ['--version'], { encoding: 'utf8', timeout: 5000, maxBuffer: 4096 });
   if (version.status !== 0) throw new Error('OpenCode executable not available on PATH.');
