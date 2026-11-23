@@ -203,3 +203,23 @@ test('invalid project config blocks setup before writes and makes runtime doctor
   assert.equal((await installationDoctor(options)).healthy,true);
   assert.equal(await read(filename),'{ broken');
 }));
+
+test('rollback skips modified backups without discarding them', async () => temporary(async ({root,home}) => {
+  const options = {root, home, agents:'codex'};
+  await setupInstallation({...options,withRuntime:false});
+  const upgraded = await setupInstallation(options);
+  const {path:target,backup:healthy} = upgraded.paths[0];
+  const changed = 'custom skill contents\n';
+  await fs.writeFile(path.join(target,'SKILL.md'),changed);
+  const repaired = await setupInstallation({...options,force:true});
+  const modified = repaired.paths[0].backup;
+  // Keep the backup order deterministic even if both writes land in the same millisecond.
+  const latest = modified < healthy ? healthy + '-modified' : modified;
+  if (latest !== modified) await fs.rename(modified,latest);
+  assert.equal((await rollbackInstallation({...options,dryRun:true})).paths[0].backup,healthy);
+  await rollbackInstallation(options);
+  assert.equal(await read(path.join(latest,'SKILL.md')),changed);
+  const doctor = await installationDoctor(options);
+  assert.equal(doctor.healthy,true);
+  assert.equal(doctor.agents[0].runtimeExists,false);
+}));
