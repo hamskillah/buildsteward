@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Restore the newest intact skill backup during rollback and preserve modified backups.
+- Keep work open when Node reports zero tests and ignore changing warning process IDs when detecting repeated Node test failures.
+- Use the current npm lockfile package map and read linked workspace versions from recorded targets.
+- Report invalid project configuration in the console and prioritize the active task in work context.
+
 ## 0.3.0
 
 - Added an offline Composer lockfile graph with exact recorded versions, development scope, and explicit statuses for unresolved requirements.
