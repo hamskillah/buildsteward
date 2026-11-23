@@ -1,0 +1,60 @@
+name: Publish to GitHub Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag, such as v0.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: github-package-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.release_tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Fetch the published npm artifact
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          name=$(node -p 'require("./package.json").name')
+          version=$(node -p 'require("./package.json").version')
+          test "$name" = '@hamskillah/buildsteward'
+          test "v$version" = "$RELEASE_TAG"
+          mkdir -p "$RUNNER_TEMP/npm-release"
+          npm pack "$name@$version" --registry=https://registry.npmjs.org --pack-destination "$RUNNER_TEMP/npm-release"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Publish and verify the matching GitHub package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          config="$RUNNER_TEMP/github-packages.npmrc"
+          printf '%s\n' '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' > "$config"
+          export NPM_CONFIG_USERCONFIG="$config"
+          source="$RUNNER_TEMP/npm-release/hamskillah-buildsteward-$VERSION.tgz"
+          mkdir -p "$RUNNER_TEMP/github-release"
+          if ! npm pack "@hamskillah/buildsteward@$VERSION" --registry=https://npm.pkg.github.com --fetch-retries=0 --pack-destination "$RUNNER_TEMP/github-release"; then
+            npm publish "$source" --ignore-scripts --registry=https://npm.pkg.github.com
+            npm pack "@hamskillah/buildsteward@$VERSION" --registry=https://npm.pkg.github.com --prefer-online --pack-destination "$RUNNER_TEMP/github-release"
+          fi
+          cmp "$source" "$RUNNER_TEMP/github-release/hamskillah-buildsteward-$VERSION.tgz"
