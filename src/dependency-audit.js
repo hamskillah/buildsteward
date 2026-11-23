@@ -34,9 +34,11 @@ export async function inspectProjectDependencies(root) {
   let lock;
   try {lock=await readJsonLimited(path.join(root,'package-lock.json'));}catch(e){if(e.code==='ENOENT')return {ecosystem:'npm',status:'lockfile_missing',directCount:declared.size,manifestDigest:pkg.hash,checksNotPerformed:['dependency resolution','vulnerability analysis','license compliance','runtime compatibility'],note:'Create a lockfile through your package manager before claiming reproducible resolution.'};throw e;}
   if(![1,2,3].includes(lock.value.lockfileVersion))return {ecosystem:'npm',status:'unsupported_lockfile_version',lockfileVersion:lock.value.lockfileVersion};
+  const isLegacy=lock.value.lockfileVersion===1;
   const lockPackages=lock.value.packages||{};
+  const legacyEntries=lock.value.dependencies||{};
   const rootPkg=lockPackages['']||null;
-  const canVerifyRoot=lock.value.lockfileVersion!==1 && rootPkg && typeof rootPkg==='object' && !Array.isArray(rootPkg);
+  const canVerifyRoot=!isLegacy && rootPkg && typeof rootPkg==='object' && !Array.isArray(rootPkg);
   const missing=[],mismatch=new Set(),direct=[];
   if(canVerifyRoot) {
     for(const field of fields) {
@@ -50,13 +52,21 @@ export async function inspectProjectDependencies(root) {
     }
   }
   for(const entry of declared.values()){
-    const target=lockPackages[`node_modules/${entry.name}`]||lock.value.dependencies?.[entry.name]||null;
+    const entries=isLegacy ? legacyEntries : lockPackages;
+    const key=isLegacy ? entry.name : `node_modules/${entry.name}`;
+    const record=Object.hasOwn(entries,key) ? entries[key] : null;
+    let target=record;
+    if (!isLegacy && record?.link===true) {
+      const linked=typeof record.resolved==='string' ? path.posix.normalize(record.resolved) : '.';
+      target=linked!=='.' && Object.hasOwn(lockPackages,linked) ? lockPackages[linked] : null;
+    }
+    const version=target?.link!==true && typeof target?.version==='string' && target.version ? target.version : null;
     const lockRange=rootPkg?.[entry.kind]?.[entry.name];
-    if(!target?.version)missing.push(entry.name);
+    if(!version)missing.push(entry.name);
     if(canVerifyRoot && lockRange!==entry.range)mismatch.add(entry.name);
-    direct.push({...entry,lockedVersion:target?.version||null});
+    direct.push({...entry,lockedVersion:version});
   }
-  const count=Object.keys(lockPackages).filter(x=>x!==''&&x.startsWith('node_modules/')).length||Object.keys(lock.value.dependencies||{}).length;
+  const count=isLegacy ? Object.keys(legacyEntries).length : Object.keys(lockPackages).filter(x=>x.startsWith('node_modules/')).length;
   const warnings=[];
   if(missing.length)warnings.push('Declared dependency missing from lockfile');
   if(mismatch.size)warnings.push('Lockfile root declarations differ from package.json');

@@ -37,7 +37,7 @@ buildsteward work context
 
 `--confirm-run` acknowledges that test scripts within a repository can execute arbitrary code. **It is not an OS sandbox or trusted permission grant.** Run unfamiliar repositories in an isolated environment. `work check` intentionally disallows arbitrary shell command strings, requires an explicit test runner, and does not persist raw command output (which could expose secrets).
 
-Other supported runners: `node-test`, `go-test`, `cargo-test`, `python-test`. A failed check leaves the task open. Three consecutive identical failing output hashes on one runner block the task. Block explicitly with `work block --id ID --reason TEXT` and reopen with `work resume --id ID`.
+Other supported runners: `node-test`, `go-test`, `cargo-test`, `python-test`. A failed check leaves the task open. A Node test summary reporting zero tests, including through `npm-test`, leaves the task open with `failureKind: no_tests`. Custom npm scripts without a recognized summary are assessed by exit status. Three consecutive failures with the same fingerprint on one runner block the task. For `node-test`, the fingerprint ignores test durations and process IDs in Node warnings. Block explicitly with `work block --id ID --reason TEXT` and reopen with `work resume --id ID`.
 
 ## Plan format
 

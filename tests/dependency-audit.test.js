@@ -52,3 +52,52 @@ test('stale declarations present only in the lockfile are inconsistent', async (
   assert.equal(result.status, 'inconsistent');
   assert.deepEqual(result.mismatchedRanges, ['old']);
 }));
+
+test('v2 audit does not count a legacy dependency when its packages entry is missing', async () => env(async root => {
+  const manifest = { dependencies: { sample: '1.2.3' } };
+  const lock = {
+    lockfileVersion: 2,
+    packages: { '': manifest, 'node_modules/sample': { version: '1.2.3' } },
+    dependencies: { sample: { version: '1.2.3' } },
+  };
+  const lockfile = path.join(root, 'package-lock.json');
+  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify(manifest));
+  await fs.writeFile(lockfile, JSON.stringify(lock));
+  assert.equal((await inspectProjectDependencies(root)).status, 'consistent_manifest');
+
+  delete lock.packages['node_modules/sample'];
+  await fs.writeFile(lockfile, JSON.stringify(lock));
+  const result = await inspectProjectDependencies(root);
+  assert.equal(result.status, 'inconsistent');
+  assert.equal(result.counts.lockedPackageEntries, 0);
+  assert.deepEqual(result.missing, ['sample']);
+
+  await fs.writeFile(lockfile, JSON.stringify({ lockfileVersion: 1, dependencies: lock.dependencies }));
+  const legacy = await inspectProjectDependencies(root);
+  assert.equal(legacy.status, 'unverified_manifest');
+  assert.equal(legacy.directPreview[0].lockedVersion, '1.2.3');
+}));
+
+test('workspace links report the version of the recorded lockfile target', async () => env(async root => {
+  const manifest = { workspaces: ['local'], dependencies: { 'local-pack': 'file:./local' } };
+  const lock = {
+    lockfileVersion: 3,
+    packages: {
+      '': manifest,
+      'node_modules/local-pack': { resolved: 'local', link: true },
+      local: { name: 'local-pack', version: '1.2.3' },
+    },
+  };
+  const lockfile = path.join(root, 'package-lock.json');
+  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify(manifest));
+  await fs.writeFile(lockfile, JSON.stringify(lock));
+  const result = await inspectProjectDependencies(root);
+  assert.equal(result.status, 'consistent_manifest');
+  assert.equal(result.directPreview[0].lockedVersion, '1.2.3');
+
+  delete lock.packages.local;
+  await fs.writeFile(lockfile, JSON.stringify(lock));
+  const dangling = await inspectProjectDependencies(root);
+  assert.equal(dangling.status, 'inconsistent');
+  assert.deepEqual(dangling.missing, ['local-pack']);
+}));

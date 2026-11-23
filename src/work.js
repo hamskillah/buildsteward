@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { stripVTControlCharacters } from 'node:util';
 import { readConfig } from './config.js';
 import { loadState, saveState, storagePath } from './state.js';
 
@@ -136,10 +137,17 @@ export async function checkWork(root,id,runner,{confirmed=false,timeoutMs=60000,
   delete env.NODE_TEST_CONTEXT;
   const result=spawn(binary,args,{cwd:path.resolve(root),encoding:'utf8',timeout:timeoutMs,maxBuffer:262144,windowsHide:true,shell:false,env});
   const output=(result.stdout||'')+'\n'+(result.stderr||'');
-  const passed=!result.error&&result.status===0;
-  const record={at:now(),runner,exitCode:typeof result.status==='number'?result.status:null,elapsedMs:Date.now()-start,passed,outputDigest:createHash('sha256').update(output).digest('hex'),failureKind:result.error?.code||null};
+  const succeeded=!result.error && result.status===0;
+  const testCounts=succeeded && (runner==='node-test' || runner==='npm-test')
+    ? [...stripVTControlCharacters(result.stdout || '').matchAll(/^(?:#|ℹ) tests (\d+)[ \t]*\r?$/gm)]
+    : [];
+  const noTests=testCounts.length>0 && testCounts.every(count=>Number(count[1])===0);
+  const passed=succeeded && !noTests;
+  const record={at:now(),runner,exitCode:typeof result.status==='number'?result.status:null,elapsedMs:Date.now()-start,passed,outputDigest:createHash('sha256').update(output).digest('hex'),failureKind:result.error?.code || (noTests ? 'no_tests' : null)};
   if (!passed && runner === 'node-test') {
-    const stableOutput = output.replace(/^(?:ℹ |# |[ \t]+)duration_ms:?[ \t]+[\d.eE+-]+[ \t]*\r?$/gm, 'duration_ms');
+    const stableOutput = output
+      .replace(/^(?:ℹ |# |[ \t]+)duration_ms:?[ \t]+[\d.eE+-]+[ \t]*\r?$/gm, 'duration_ms')
+      .replace(/^((?:# )?\(node:)\d+(\) (?:\[[^\]\r\n]+\] )?[A-Za-z]*Warning:)/gm, '$1<PID>$2');
     record.failureFingerprint = createHash('sha256').update(JSON.stringify([record.exitCode, record.failureKind, stableOutput])).digest('hex');
   }
   task.checks.push(record);
@@ -149,10 +157,12 @@ export async function checkWork(root,id,runner,{confirmed=false,timeoutMs=60000,
     task.evidence.push({type:'stagnation',at:now(),summary:'Three repeated equivalent failing test outputs. Change hypothesis before resuming.'});
   }
   state.updatedAt=now();await saveState(root,'work',state);
-  return {id,status:task.status,check:record,next:task.status==='blocked'?'Review repeated failure before resume':passed?'Check acceptance criteria and proceed':'Inspect failure and change implementation',note:'Exit code proves the command ran successfully, not full acceptance, security, or deploy readiness. Raw output is not stored to avoid capturing secrets.'};
+  return {id,status:task.status,check:record,next:task.status==='blocked'?'Review repeated failure before resume':passed?'Check acceptance criteria and proceed':noTests?'Add tests and rerun the check':'Inspect failure and change implementation',note:'Exit code proves the command ran successfully, not full acceptance, security, or deploy readiness. Raw output is not stored to avoid capturing secrets.'};
 }
 export async function workContext(root) {
   const state=await get(root), summary=summarize(state);
-  const focused=state.tasks.find(t=>t.status==='active'||t.status==='implemented')||state.tasks.find(t=>ready(state,t));
+  const focused=state.tasks.find(t=>t.status==='active')
+    ?? state.tasks.find(t=>t.status==='implemented')
+    ?? state.tasks.find(t=>ready(state,t));
   return {goal:state.goal,progress:`${summary.done}/${summary.total}`,task:focused?{id:focused.id,title:focused.title,status:focused.status,kind:focused.kind,acceptance:focused.acceptance,verification:focused.verification}:null,blocked:summary.blocked,notes:['Load only the files relevant to this task.','Check current source; prior working state is advisory.','Do not claim verification unless the relevant commands ran.']};
 }
