@@ -67,6 +67,9 @@ test('optional checks compare exact licenses and host platform without assuming 
     os: ['!win32'], cpu: ['any', '!arm64'], libc: ['glibc'] }) });
   assert.deepEqual(report.assessment, { license: 'not_allowlisted',
     host: { os: 'linux', cpu: 'arm64', osMatch: 'matches', cpuMatch: 'excluded', libc: 'not_evaluated' } });
+  const mixedRule = await metadataForNpmLock(root, { ...query, online: false, checkPlatform: true },
+    { host: { platform: 'linux', arch: 'x64' } });
+  assert.equal(mixedRule.assessment.host.cpuMatch, 'excluded');
   const unverified = await metadataForNpmLock(root, {
     name, version: '9.9.9', allowLicense: 'MIT', checkPlatform: true,
   }, { host });

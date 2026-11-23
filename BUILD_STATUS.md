@@ -8,9 +8,9 @@ Codex, OpenCode, Claude Code, Pi, and Hermes passed the bugfix and offline lockf
 
 | Agent | Version | Activation evidence |
 |---|---|---|
-| Codex CLI | 0.171.0 | Read installed `SKILL.md` |
-| OpenCode | 1.19.6 | Native skill tool call |
-| Claude Code | 2.1.330 | Native skill tool call and bundled `deps inventory` |
+| Codex CLI | 0.171.0 project, 0.160.0 global | Read project and global `SKILL.md`. The global skill-only run used OpenCode Go in read-only mode |
+| OpenCode | 1.19.6 | Native skill tool call in project and global skill-only scopes |
+| Claude Code | 2.1.330 | Native skill tool call in project and global skill-only scopes, plus bundled project `deps inventory` |
 | Cursor CLI | 2026.11.22-e9042b2 | Read project and global `SKILL.md`; project `deps inventory` returned the independently verified digest |
 | Pi | 1.5.2 | Read installed `SKILL.md` with project trust enabled |
 | Hermes Agent | `a3b993b9` | Native `skill_view` and project CLI call |

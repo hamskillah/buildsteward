@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - Added an offline Composer lockfile graph with exact recorded versions, development scope, and explicit statuses for unresolved requirements.
 - Added opt-in npm publisher license allowlist matching and current-host OS/CPU checks.
-- Added a matched three-arm Claude Code benchmark across audit and review fixtures.
+- Treat malformed, partial, and stale advisory evidence as incomplete. Keep external evidence requests on their configured endpoints.
+- Added matched Claude Code and OpenCode benchmarks, including release readiness and decision fixtures.
 
 ## 0.2.1
 

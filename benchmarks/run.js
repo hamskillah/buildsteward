@@ -30,6 +30,24 @@ const tasks = {
     mutable: 'release.json',
     prompt: 'Assess whether to publish the requested release using evidence.json. Write only release.json with fields decision (publish or hold), candidateCiVerified (boolean), and blockers (array of applicable codes: ci_candidate, install_smoke, authorization). This is a review only. Do not run release commands.',
   },
+  architecture: {
+    files: ['evidence.json'],
+    mutable: 'decision.json',
+    prompt: 'Choose an architecture using evidence.json. Write only decision.json with fields choice (option ID), delivery (at_most_once, at_least_once, exactly_once), and deduplication (receiver_idempotency_key or none). Judge delivery guarantees from the stated crash case.',
+    expected: { choice: 'sqlite_outbox', delivery: 'at_least_once', deduplication: 'receiver_idempotency_key' },
+  },
+  design: {
+    files: ['evidence.json'],
+    mutable: 'decision.json',
+    prompt: 'Choose a UI correction using evidence.json. Write only decision.json with fields choice (proposal ID), trigger (close or open), and expectedFocus (opener, document_start, or dialog). Base your choice on the stated user issue and constraints.',
+    expected: { choice: 'close_focus', trigger: 'close', expectedFocus: 'opener' },
+  },
+  selection: {
+    files: ['evidence.json'],
+    mutable: 'decision.json',
+    prompt: 'Choose a dependency using evidence.json. Write only decision.json with fields choice (candidate ID), quickConfVersionEvidence (matches or unknown), and securityClaim (no_advisories_reported or secure). Apply the policy to each exact version.',
+    expected: { choice: 'stream-conf@2.1.0', quickConfVersionEvidence: 'unknown', securityClaim: 'no_advisories_reported' },
+  },
 };
 const arms = new Set(['baseline', 'skill', 'cli']);
 
@@ -96,6 +114,10 @@ async function score(taskId, directory) {
       Object.keys(assessment).length !== 3) {
     return { task: taskId, pass: false, protectedFilesIntact, reportValid: false };
   }
+  if (task.expected) {
+    const findings = Object.fromEntries(Object.entries(task.expected).map(([key, value]) => [key, assessment[key] === value]));
+    return { task: taskId, pass: Object.values(findings).every(Boolean), protectedFilesIntact, findings };
+  }
   if (taskId === 'review') {
     const findings = { setting: assessment.setting === 'email', requestedValue: assessment.requestedValue === false,
       returnedValue: assessment.returnedValue === true };
@@ -119,7 +141,7 @@ try {
   const [command, task, ...args] = process.argv.slice(2);
   if (!Object.hasOwn(tasks, task) || !((command === 'prepare' && args.length === 2) ||
       (command === 'score' && args.length === 1))) {
-    throw new Error('Usage: run.js prepare <bugfix|audit|review|compat|release> <baseline|skill|cli> <new-dir> or run.js score <bugfix|audit|review|compat|release> <dir>');
+    throw new Error(`Usage: run.js prepare <${Object.keys(tasks).join('|')}> <baseline|skill|cli> <new-dir> or run.js score <${Object.keys(tasks).join('|')}> <dir>`);
   }
   const directory = path.resolve(args.at(-1));
   const result = command === 'prepare' ? await prepare(task, args[0], directory) : await score(task, directory);

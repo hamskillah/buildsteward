@@ -1,0 +1,10 @@
+{
+  "problem": "Retry webhook delivery after the existing server restarts. The server already uses SQLite.",
+  "constraints": { "surviveProcessRestart": true, "addNetworkService": false, "maxP95AddedLatencyMs": 20 },
+  "options": [
+    { "id": "memory_queue", "survivesRestart": false, "addsNetworkService": false, "p95AddedLatencyMs": 1 },
+    { "id": "sqlite_outbox", "survivesRestart": true, "addsNetworkService": false, "p95AddedLatencyMs": 8 },
+    { "id": "redis_queue", "survivesRestart": true, "addsNetworkService": true, "p95AddedLatencyMs": 5 }
+  ],
+  "delivery": "A worker can crash after the receiver accepts a webhook and before the delivery is marked complete."
+}

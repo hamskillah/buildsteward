@@ -95,3 +95,24 @@ test('release grader rejects stale CI claims and unauthorized publish decisions'
   await writeFile(path.join(project, 'unauthorized-release.json'), '{}');
   assert.equal(run('score', 'release', project).pass, false);
 });
+
+test('decision fixtures grade the stated constraints and reject unsupported claims', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'steward-decisions-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const cases = [
+    ['architecture', { choice: 'sqlite_outbox', delivery: 'at_least_once', deduplication: 'receiver_idempotency_key' },
+      { delivery: 'exactly_once' }],
+    ['design', { choice: 'close_focus', trigger: 'close', expectedFocus: 'opener' }, { expectedFocus: 'document_start' }],
+    ['selection', { choice: 'stream-conf@2.1.0', quickConfVersionEvidence: 'unknown', securityClaim: 'no_advisories_reported' },
+      { securityClaim: 'secure' }],
+  ];
+  for (const [task, decision, invalid] of cases) {
+    const project = path.join(root, task);
+    run('prepare', task, 'baseline', project);
+    const report = path.join(project, 'decision.json');
+    await writeFile(report, JSON.stringify(decision));
+    assert.equal(run('score', task, project).pass, true, task);
+    await writeFile(report, JSON.stringify({ ...decision, ...invalid }));
+    assert.equal(run('score', task, project).pass, false, task);
+  }
+});

@@ -83,6 +83,43 @@ On 2026-11-23, OpenCode 1.19.6 with DeepSeek V4.1 Flash on Go ran `node benchmar
 
 The baseline's errors were attempts to load the absent skill. The bundled arm inspected more files and had the highest workload of the three. No CLI execution was enabled for this review task. The grader also rejects synthetic reports that propose an unauthorized release or claim the candidate CI passed.
 
+### Architecture, design, and dependency selection
+
+Three read-only decision fixtures score the option chosen and the main claim needed to justify it.
+
+| Fixture | Checks |
+|---|---|
+| `architecture` | Durable webhook retries without a new service, at-least-once delivery, and receiver idempotency |
+| `design` | A keyboard focus regression, the event that triggers the correction, and the expected focus target |
+| `selection` | Exact-version evidence, offline and runtime constraints, and a bounded advisory claim |
+
+Run each as `node benchmarks/opencode.js TASK opencode-go/deepseek-v4.1-flash ./new-run [ARM-ORDER]`. Bash was denied for these fixtures and the release repeat. The table shows OpenCode 1.19.6 results from 2026-11-23 in observed run order. The grader accepts the expected decision fields and checks input files independently. Design scoring covers a UX decision on supplied evidence.
+
+| Fixture | Arm | Grader | Skill loaded | Total tokens | Cached read | Tool calls | Tool errors | Seconds |
+|---|---|---|---|---:|---:|---:|---:|---:|
+| Architecture | Baseline | Pass | No | 24,917 | 20,224 | 6 | 0 | 22.65 |
+| Architecture | Skill + CLI | Pass | No | 21,950 | 16,640 | 6 | 0 | 18.18 |
+| Architecture | Skill | Pass | Yes | 22,010 | 17,024 | 5 | 0 | 16.38 |
+| Design | Skill | Pass | Yes | 21,805 | 16,896 | 5 | 0 | 16.24 |
+| Design | Baseline | Pass | No | 18,495 | 14,720 | 3 | 0 | 18.34 |
+| Design | Skill + CLI | Pass | Yes | 49,426 | 39,808 | 14 | 0 | 23.24 |
+| Selection | Skill + CLI | Pass | Yes | 144,754 | 121,856 | 20 | 0 | 46.08 |
+| Selection | Skill | Pass | Yes | 36,556 | 28,928 | 7 | 0 | 27.41 |
+| Selection | Baseline | Pass | No | 20,085 | 14,848 | 3 | 0 | 24.66 |
+| Release repeat | Skill + CLI | Pass | Yes | 50,819 | 38,400 | 8 | 0 | 24.46 |
+| Release repeat | Baseline | Pass | No | 31,641 | 26,112 | 9 | 1 | 25.41 |
+| Release repeat | Skill | Pass | Yes | 32,470 | 24,832 | 9 | 0 | 28.82 |
+
+The release decision was correct in both arm orders. The bundled arm led to 131,901 total tokens on the first release run and 50,819 on the repeat. This spread limits conclusions from single attempts. Tool errors are observed unsuccessful tool calls. The harness did not measure provider retries separately.
+
+A separate three-arm `compat` run scored the new currency feature and the exact legacy result via the external verifier. It used the standard shell allowlist and the same OpenCode model and version.
+
+| Arm | Grader | Skill loaded | Total tokens | Cached read | Tool calls | Tool errors | Seconds |
+|---|---|---|---:|---:|---:|---:|---:|
+| Skill | Pass | Yes | 62,273 | 52,864 | 10 | 2 | 31.44 |
+| Skill + CLI | Pass | Yes | 62,707 | 49,280 | 10 | 1 | 27.32 |
+| Baseline | Pass | No | 52,563 | 45,312 | 9 | 1 | 26.44 |
+
 ## Claude Code compatibility with OpenCode Go
 
 Claude Code 2.1.330 used DeepSeek V4.1 Flash through the [OpenCode Go Anthropic-compatible gateway](https://opencode.ai/docs/console/harnesses/claude-code/). An exploratory bundled-arm audit passed the independent grader in 55.53 seconds. Its event stream recorded skill discovery and activation. The attempted CLI commands in that audit produced no verified CLI result. The environment was replaced before the other two arms could be verified, so that trial has no usable cross-arm comparison.

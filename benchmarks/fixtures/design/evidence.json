@@ -1,0 +1,10 @@
+{
+  "surface": "Settings dialog opened from a persistent button on the dashboard",
+  "issue": "Keyboard users lose focus after closing the dialog. Focus lands at the start of the document.",
+  "constraints": { "keepDashboardLayout": true, "mustWorkWithKeyboard": true },
+  "proposals": [
+    { "id": "animation", "effect": "Add a stronger close animation" },
+    { "id": "close_focus", "effect": "When the dialog closes, restore focus to the element that opened it" },
+    { "id": "always_open", "effect": "Replace the dialog with a permanently expanded panel in the dashboard" }
+  ]
+}

@@ -31,3 +31,9 @@ After `buildsteward init`, run `buildsteward deps metadata --name lodash --versi
 The command reports the publisher's license declaration, Node and npm engine ranges, OS/CPU/libc lists, and deprecation metadata separately. Missing or unusable declarations are null. Registry and lockfile provenance, matching edge counts and cache freshness remain explicit in the report. The command does not determine legal compatibility, validate runtime behavior, or infer maintenance quality.
 
 To compare a publisher declaration with your own allowlist, add `--allow-license 'MIT,Apache-2.0'`. Matching uses the complete declared string. Compound expressions can be allowlisted explicitly. Add `--check-platform` to compare declared OS and CPU lists with the current host. Missing evidence, expired cache records, and mixed registry provenance yield unknown assessments. The command leaves Node/npm engine ranges and libc as declarations for review.
+
+## Inspect an individual version
+
+Use `buildsteward deps inspect --ecosystem npm --name lodash --version 4.17.21` for individual deps.dev and OSV lookups. Each service gets at most one request per invocation with an eight-second deadline. Service errors, including HTTP 429, are reported without an automatic retry. Redirects are refused to keep requests on the configured evidence endpoints. Malformed OSV responses remain unknown, and pagination, capped results, and expired cache entries remain incomplete. Pass `--offline` to read cached evidence only.
+
+A live smoke used an npm-generated lockfile for the public package `lodash@4.17.21`. Its exact version returned publisher metadata and an OSV batch result. The smoke verified both integrations, with a single known test identity.

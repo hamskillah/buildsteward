@@ -20,9 +20,10 @@ function select(data) {
 
 function platformMatch(rules, value) {
   if (!rules?.length) return 'unknown';
+  if (rules.length === 1 && rules[0] === 'any') return 'matches';
   if (rules.includes('!' + value)) return 'excluded';
   const allowed = rules.filter(rule => !rule.startsWith('!'));
-  return !allowed.length || allowed.includes(value) || allowed.includes('any') ? 'matches' : 'excluded';
+  return !allowed.length || allowed.includes(value) ? 'matches' : 'excluded';
 }
 
 function assess(data, licenses, checkPlatform, host) {

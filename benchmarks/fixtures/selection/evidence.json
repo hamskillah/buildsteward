@@ -1,0 +1,9 @@
+{
+  "problem": "Select one exact dependency version for a Node 22 utility that must also work offline after installation.",
+  "policy": { "allowedLicenses": ["MIT", "Apache-2.0"], "runtime": 22, "requireAdvisoryEvidenceForExactVersion": true },
+  "candidates": [
+    { "id": "stream-conf@2.1.0", "nodeMin": 22, "license": "MIT", "worksOffline": true, "advisoryEvidence": { "version": "2.1.0", "count": 0 } },
+    { "id": "quick-conf@4.0.0", "nodeMin": 22, "license": "MIT", "worksOffline": true, "advisoryEvidence": { "version": "3.9.0", "count": 0 } },
+    { "id": "cloud-conf@1.2.1", "nodeMin": 24, "license": "Apache-2.0", "worksOffline": false, "advisoryEvidence": { "version": "1.2.1", "count": 0 } }
+  ]
+}

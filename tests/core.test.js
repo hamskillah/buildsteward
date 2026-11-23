@@ -141,6 +141,35 @@ test('dependency offline mode marks uncached data unknown', async () => {
   });
 });
 
+test('dependency evidence preserves unknown for malformed, paginated, or expired advisory evidence', async () => {
+  await withProject(async root => {
+    const inspect = (version, advisory) => inspectDependency(root, { ecosystem: 'npm', name: 'sample', version }, {
+      fetcher: async (url, init) => {
+        assert.equal(init.redirect, 'error');
+        return { ok: true, text: async () => JSON.stringify(url.includes('deps.dev') ? { licenses: ['MIT'], advisoryKeys: [] } : advisory) };
+      },
+    });
+    const malformed = await inspect('1.0.0', { vulns: { unexpected: true } });
+    assert.equal(malformed.status, 'incomplete_evidence');
+    assert.equal(malformed.knownOsvVulnerabilities, null);
+    const paginated = await inspect('2.0.0', { next_page_token: 'remaining' });
+    assert.equal(paginated.status, 'incomplete_evidence');
+    assert.equal(paginated.knownOsvVulnerabilities, null);
+    assert.equal((await inspect('3.0.0', { vulns: [] })).status, 'evidence_collected');
+    const cache = path.join(root, '.buildsteward', 'cache');
+    for (const file of await fs.readdir(cache)) {
+      const filename = path.join(cache, file);
+      const entry = JSON.parse(await fs.readFile(filename));
+      entry.observedAt = '2000-01-01T00:00:00.000Z';
+      await fs.writeFile(filename, JSON.stringify(entry));
+    }
+    const stale = await inspectDependency(root, { ecosystem: 'npm', name: 'sample', version: '3.0.0', offline: true });
+    assert.equal(stale.status, 'incomplete_evidence');
+    assert.equal(stale.sources[1].status, 'cached_stale');
+    await assert.rejects(inspectDependency(root, { ecosystem: 'constructor', name: 'sample', version: '1.0.0' }), /Unsupported ecosystem/);
+  });
+});
+
 test('insufficient evidence cannot be approved or selected', async () => {
   await withProject(async root => {
     const d = await recordDecision(root,{topic:'new runtime',tier:'architectural',candidates:[candidate('risky',{gates:{compatible:true,licenseAllowed:true}})]});
