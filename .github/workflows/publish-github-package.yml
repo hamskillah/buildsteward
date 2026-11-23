@@ -40,7 +40,19 @@ jobs:
           test "$name" = '@hamskillah/buildsteward'
           test "v$version" = "$RELEASE_TAG"
           mkdir -p "$RUNNER_TEMP/npm-release"
-          npm pack "$name@$version" --registry=https://registry.npmjs.org --pack-destination "$RUNNER_TEMP/npm-release"
+          registry=https://registry.npmjs.org
+          integrity=$(npm view "$name@$version" dist.integrity --registry="$registry" --prefer-online)
+          [[ "$integrity" =~ ^sha512-[A-Za-z0-9+/]+={0,2}$ ]]
+          log="$RUNNER_TEMP/npm-release/pack.log"
+          if ! npm pack "$name@$version" --registry="$registry" --prefer-online --pack-destination "$RUNNER_TEMP/npm-release" > "$log" 2>&1; then
+            cat "$log"
+            grep -Eq 'code (E404|ETARGET)' "$log"
+            echo "Published metadata exists; rebuilding the tagged artifact for an integrity check."
+            npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/npm-release"
+          fi
+          artifact="$RUNNER_TEMP/npm-release/hamskillah-buildsteward-$version.tgz"
+          actual=$(node -e 'const fs=require("node:fs"); const crypto=require("node:crypto"); process.stdout.write("sha512-"+crypto.createHash("sha512").update(fs.readFileSync(process.argv[1])).digest("base64"));' "$artifact")
+          test "$actual" = "$integrity" || { echo "Artifact does not match published npm integrity"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
       - name: Publish and verify the matching GitHub package
         env:
