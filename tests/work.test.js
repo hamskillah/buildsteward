@@ -140,3 +140,59 @@ test('work check runs the installed npm executable and records the result', asyn
   const result=await checkWork(root,task.id,'npm-test',{confirmed:true});
   assert.equal(result.status,'checked');
 }));
+
+test('empty Node suites do not complete work or unlock dependents', async () => fixture(async root => {
+  const small = structuredClone(plan);
+  small.tasks = small.tasks.slice(1);
+  small.tasks[0].dependsOn = [];
+  await createWork(root, small);
+  await startWork(root, 'build');
+  await completeWork(root, 'build', 'Implementation ready');
+  await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({
+    scripts: { test: 'node --test' },
+  }));
+  for (const runner of ['node-test', 'npm-test']) {
+    const result = await checkWork(root, 'build', runner, {confirmed:true});
+    assert.equal(result.check.exitCode, 0);
+    assert.equal(result.check.failureKind, 'no_tests');
+    assert.equal(result.check.passed, false);
+    assert.equal(result.status, 'implemented');
+    assert.equal((await nextWork(root)).status, 'none_ready');
+  }
+  await fs.writeFile(path.join(root, 'proof.test.mjs'), "import { test } from 'node:test'; test('checks work', () => {});");
+  assert.equal((await checkWork(root, 'build', 'npm-test', {confirmed:true})).status, 'checked');
+  assert.equal((await nextWork(root)).task.id, 'release');
+}));
+
+test('Node warning PIDs and durations do not hide repeated failures', async () => fixture(async root => {
+  await createWork(root, plan);
+  await startWork(root, 'design');
+  await completeWork(root, 'design', 'Layout done');
+  await reviewWork(root, 'design', 'Layout checked');
+  await startWork(root, 'build');
+  await completeWork(root, 'build', 'Implementation done');
+
+  for (const pid of [151, 203, 255]) {
+    const result = await checkWork(root, 'build', 'node-test', {
+      confirmed: true,
+      spawn: () => ({
+        status: 1,
+        stdout: `# (node:${pid}) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental\nnot ok 1 - regression\n# duration_ms ${pid}\n`,
+        stderr: `(node:${pid + 1}) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental\n`,
+      }),
+    });
+    assert.equal(result.status, pid === 255 ? 'blocked' : 'implemented');
+  }
+}));
+
+test('work context prioritizes the active task over an earlier implementation', async () => fixture(async root => {
+  const small = structuredClone(plan);
+  small.tasks[1].dependsOn = [];
+  await createWork(root, small);
+  await startWork(root, 'design');
+  await completeWork(root, 'design', 'Layout ready');
+  assert.equal((await workContext(root)).task.id, 'design');
+  await startWork(root, 'build');
+  assert.equal((await nextWork(root)).task.id, 'build');
+  assert.equal((await workContext(root)).task.id, 'build');
+}));

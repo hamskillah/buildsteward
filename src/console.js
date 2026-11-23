@@ -42,7 +42,9 @@ export async function runConsole({ root, input, output, showHelp, detect = detec
         } else if (choice === '3') {
           const result = await installationDoctor({ root });
           for (const agent of result.agents) {
-            write(`  ${agent.agent}: ${agent.healthy ? 'ready' : agent.status}\n`);
+            const status = !agent.healthy ? agent.status
+              : agent.runtimeExists && !result.configHealthy ? 'project configuration error' : 'ready';
+            write(`  ${agent.agent}: ${status}\n`);
           }
           write('This checks local files. Open a fresh agent session to verify activation.\n');
         } else if (choice === '4') {

@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { test } from 'node:test';
 import { runConsole } from '../src/console.js';
+import { setupInstallation } from '../src/setup.js';
 
-async function session(t, answers, defaults = []) {
+async function session(t, answers, defaults = [], prepare) {
   const root = await mkdtemp(path.join(tmpdir(), 'buildsteward-console-'));
   t.after(() => rm(root, { recursive: true, force: true }));
+  await prepare?.(root);
   let display = '';
   await runConsole({
     root,
@@ -40,4 +42,15 @@ test('console handles an invalid agent and an explicit cancellation without writ
   assert.match(display, /Unsupported agent/);
   assert.match(display, /Installation cancelled/);
   assert.deepEqual(await readdir(root), []);
+});
+
+test('console reports invalid project configuration for an installed runtime', async t => {
+  const { display } = await session(t, ['3\n', '0\n'], [], async root => {
+    await setupInstallation({ root, agents: ['codex'] });
+    await setupInstallation({ root, agents: ['claude'], withRuntime: false });
+    await writeFile(path.join(root, '.buildsteward/config.json'), '{broken');
+  });
+  assert.match(display, /codex: project configuration error/);
+  assert.doesNotMatch(display, /codex: ready/);
+  assert.match(display, /claude: ready/);
 });
