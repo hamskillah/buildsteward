@@ -76,6 +76,7 @@ export async function main(args) {
       result = await installationDoctor({root,scope:param(args,'--scope','project'),agents:param(args,'--agents')});
       if(args.includes('--strict') && !result.healthy) {
         const failures=result.agents.filter(a=>!a.healthy).map(a=>`${a.agent}:${a.status}`);
+        if(!result.configHealthy) failures.push(`project configuration: ${result.config}`);
         throw new Error(`Installation check failed: ${failures.join(', ')}`);
       }
       break;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Detect Windows command shims and the Cursor Agent CLI during setup.
+- Validate existing project settings before installing a full runtime. Strict doctor now reports missing or invalid project settings for bundled project installs.
+- Run npm test scripts through Node on Windows and exercise the installer and package artifact on macOS and Windows in CI.
+
 ## 0.2.0
 
 - Shorter core skill for focused changes, backward compatibility, evidence-based review, and verification.

@@ -98,8 +98,13 @@ test('CLI setup and doctor are usable non-interactively',async()=>{
 test('agent detection ignores unavailable tools and only uses executable path entries', async()=>{
   await temporary(async ({temp})=>{
     const bin=path.join(temp,'bin');await fs.mkdir(bin);
-    const command=path.join(bin,'codex');await fs.writeFile(command,'#!/bin/sh\nexit 0\n'); await fs.chmod(command,0o755);
-    assert.deepEqual(await detectAgents({PATH:bin}),['codex']);
+    const suffix=process.platform==='win32'?'.cmd':'';
+    await fs.mkdir(path.join(bin,'opencode'+suffix));
+    for (const name of ['codex','cursor-agent']) {
+      const command=path.join(bin,name+suffix);
+      await fs.writeFile(command,'#!/bin/sh\nexit 0\n',{mode:0o755});
+    }
+    assert.deepEqual(await detectAgents({Path:bin}),['codex','cursor']);
     assert.deepEqual(await detectAgents({PATH:path.join(temp,'missing')}),[]);
   });
 });
@@ -177,4 +182,24 @@ test('identical setup is unchanged and skill-only leaves project settings absent
   const full = { ...options, withRuntime: true };
   assert.equal((await setupInstallation(full)).paths[0].action, 'updated');
   assert.equal((await setupInstallation(full)).paths[0].action, 'unchanged');
+}));
+
+test('invalid project config blocks setup before writes and makes runtime doctor fail', async () => temporary(async ({root,home}) => {
+  await setupInstallation({root,home,agents:'codex'});
+  const filename=path.join(root,'.buildsteward','config.json');
+  await fs.writeFile(filename,'{ broken');
+  const options={root,home,agents:'claude'};
+  await assert.rejects(setupInstallation(options), /Invalid BuildSteward project configuration/);
+  await assert.rejects(setupInstallation({...options,dryRun:true}), /Invalid BuildSteward project configuration/);
+  await assert.rejects(fs.stat(installTarget('claude','project',root,home)), {code:'ENOENT'});
+  const report=await installationDoctor({root,home,agents:'codex'});
+  assert.equal(report.agents[0].healthy,true);
+  assert.equal(report.configHealthy,false);
+  assert.equal(report.healthy,false);
+  const strict=spawnSync(process.execPath,[path.resolve('bin/buildsteward.js'),'--root',root,'doctor','--agents','codex','--strict'],{encoding:'utf8'});
+  assert.equal(strict.status,1);
+  assert.match(strict.stderr,/project configuration/);
+  await setupInstallation({...options,withRuntime:false});
+  assert.equal((await installationDoctor(options)).healthy,true);
+  assert.equal(await read(filename),'{ broken');
 }));

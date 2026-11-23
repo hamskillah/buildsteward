@@ -128,7 +128,9 @@ export async function checkWork(root,id,runner,{confirmed=false,timeoutMs=60000,
   if(!Number.isInteger(timeoutMs)||timeoutMs<1000||timeoutMs>180000) throw new Error('Timeout must be 1000..180000ms');
   // No shell; fixed executable/args only. Projects are still untrusted and test scripts
   // can execute arbitrary code. Run trusted projects with OS sandbox when required.
-  const [binary,args]=RUNNERS[runner];
+  const [binary,args]=process.platform==='win32' && runner==='npm-test'
+    ? [process.execPath, [process.env.npm_execpath || path.join(path.dirname(process.execPath),'node_modules','npm','bin','npm-cli.js'), 'test']]
+    : RUNNERS[runner];
   const start=Date.now();
   const env={...process.env};
   delete env.NODE_TEST_CONTEXT;
