@@ -1,6 +1,6 @@
 {
   "name": "@hamskillah/buildsteward",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Portable, evidence-driven developer workflow and local decision tooling for AI coding agents",
   "engines": {

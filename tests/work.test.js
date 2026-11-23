@@ -129,3 +129,14 @@ test('real Node test failure still blocks after three runs with changing timing'
   assert.equal(new Set(runs.map(run => run.check.failureFingerprint)).size, 1);
   assert.deepEqual(runs.map(run => run.status), ['implemented', 'implemented', 'blocked']);
 }));
+
+test('work check runs the installed npm executable and records the result', async () => fixture(async root => {
+  await fs.writeFile(path.join(root,'package.json'),JSON.stringify({scripts:{test:'node verify.cjs'}}));
+  await fs.writeFile(path.join(root,'verify.cjs'),'process.stdout.write("test script ran");');
+  const task={id:'verify',title:'Verify npm script',kind:'test',risk:'low',verification:'automated',dependsOn:[],acceptance:['Script returns success']};
+  await createWork(root,{goal:'Verify npm execution',tasks:[task]});
+  await startWork(root,task.id);
+  await completeWork(root,task.id,'Verification script available');
+  const result=await checkWork(root,task.id,'npm-test',{confirmed:true});
+  assert.equal(result.status,'checked');
+}));

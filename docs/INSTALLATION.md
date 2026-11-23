@@ -40,7 +40,7 @@ buildsteward doctor --agents codex --strict
 
 Installer targets are `codex`, `opencode`, `claude`, and `cursor`. Use `--scope global` for account-wide installation and `--skill-only` to omit the bundled CLI. Use the same installer for a given skill directory. A full project install creates project settings only if they are absent. The current source also skips creating project settings for a skill-only install.
 
-`doctor` checks files and fingerprints. Check activation in a fresh agent session. Run `buildsteward help` for commands including `inspect`, `deps inventory`, and `work status`.
+`doctor` checks files and fingerprints, and validates project settings for a bundled project install. Check activation in a fresh agent session. Run `buildsteward help` for commands including `inspect`, `deps inventory`, and `work status`.
 
 ### Updates, rollback, and removal
 

@@ -13,20 +13,28 @@ function run(command, args, opts={}) {
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'buildsteward-package-smoke-'));
 try {
   const work=path.resolve(import.meta.dirname,'..');
-  const npm=process.platform==='win32'?'npm.cmd':'npm';
-  const packOutput=run(npm,['pack','--json','--pack-destination',temp],{cwd:work});
+  const windows=process.platform==='win32';
+  const npm=windows?process.execPath:'npm';
+  const npmArgs=windows?[process.env.npm_execpath || path.join(path.dirname(process.execPath),'node_modules','npm','bin','npm-cli.js')]:[];
+  const runNpm=(args,options)=>run(npm,[...npmArgs,...args],options);
+  const packOutput=runNpm(['pack','--json','--pack-destination',temp],{cwd:work});
   const metadata=JSON.parse(packOutput)[0];
   if(!metadata?.filename) throw new Error('npm pack did not produce a tarball');
   const archive=path.join(temp,metadata.filename);
   // Verify npm actually links the package binary, not only direct Node invocation.
   const prefix=path.join(temp,'installed');
   await fs.mkdir(prefix);
-  run(npm,['install','--ignore-scripts','--offline','--no-audit','--no-fund','--prefix',prefix,archive],{cwd:temp,env:{...process.env,npm_config_userconfig:path.join(temp,'empty-npmrc'),npm_config_cache:path.join(temp,'cache')}});
+  runNpm(['install','--ignore-scripts','--offline','--no-audit','--no-fund','--prefix',prefix,archive],{cwd:temp,env:{...process.env,npm_config_userconfig:path.join(temp,'empty-npmrc'),npm_config_cache:path.join(temp,'cache')}});
   run(process.execPath, ['--input-type=module', '-e',
     "import { createHostAuthority } from '@hamskillah/buildsteward/src/host-authority.js'; if (typeof createHostAuthority !== 'function') throw new Error('Missing host authority export');",
   ], {cwd:prefix});
-  const linked=path.join(prefix,'node_modules','.bin',process.platform==='win32'?'buildsteward.cmd':'buildsteward');
-  if(!run(linked,['help'],{cwd:temp}).includes('BuildSteward')) throw new Error('Installed npm executable failed');
+  const pkg=path.join(prefix,'node_modules','@hamskillah','buildsteward');
+  const linked=path.join(prefix,'node_modules','.bin',windows?'buildsteward.cmd':'buildsteward');
+  const runLinked=(args,options)=>windows
+    ? run(process.execPath,[path.join(pkg,'bin','buildsteward.js'),...args],options)
+    : run(linked,args,options);
+  await fs.access(linked);
+  if(!runLinked(['help'],{cwd:temp}).includes('BuildSteward')) throw new Error('Installed npm executable failed');
   if (process.platform !== 'win32') {
     const globalPrefix = path.join(temp, 'global');
     run(npm, ['install', '--global', '--prefix', globalPrefix, '--offline', '--ignore-scripts', '--no-audit', '--no-fund', archive], {
@@ -40,7 +48,6 @@ try {
     }));
     if (!result.ok || result.result.root !== await fs.realpath(temp)) throw new Error('Global buildsteward command failed');
   }
-  const pkg=path.join(prefix,'node_modules','@hamskillah','buildsteward');
   const agents='opencode,codex,claude,cursor';
   const layout={
     project:['.agents/skills','.claude/skills','.cursor/skills'],
@@ -52,8 +59,8 @@ try {
       const home=await fs.mkdtemp(path.join(temp,'home-'));
       const options={cwd:projectRoot,env:{...process.env,HOME:home,USERPROFILE:home}};
       const flags=['--scope',scope,'--agents',agents];
-      run(linked,['setup',...flags,'--yes',...(skillOnly?['--skill-only']:[])],options);
-      const check=()=>JSON.parse(run(linked,['doctor',...flags],options)).result;
+      runLinked(['setup',...flags,'--yes',...(skillOnly?['--skill-only']:[])],options);
+      const check=()=>JSON.parse(runLinked(['doctor',...flags],options)).result;
       const health=check();
       if (!health.healthy || health.agents.length!==4 ||
           health.agents.some(agent=>agent.runtimeExists===skillOnly)) {
@@ -66,7 +73,7 @@ try {
           throw new Error(`Missing skill content at ${skillPath}`);
         }
       }
-      run(linked,['uninstall',...flags],options);
+      runLinked(['uninstall',...flags],options);
       for (const skillPath of skillPaths) {
         const removed=await fs.stat(skillPath).then(()=>false,error=>{
           if (error.code==='ENOENT') return true;

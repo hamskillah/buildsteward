@@ -19,3 +19,17 @@ jobs:
       - run: npm run check
       - run: npm run smoke
       - run: node scripts/release-preflight.js
+  install:
+    name: Install and upgrade (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --test tests/setup.test.js tests/work.test.js
+      - run: npm run package:smoke

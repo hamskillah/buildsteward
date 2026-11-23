@@ -19,15 +19,31 @@ export const AGENTS = Object.freeze({
 
 async function exists(p) { try { await fs.lstat(p); return true; } catch (e) { if (e.code==='ENOENT') return false; throw e; } }
 async function isExecutableOnPath(command, environment) {
-  for (const base of (environment.PATH || '').split(path.delimiter).filter(Boolean)) {
-    const p = path.join(base, command);
-    try { await fs.access(p, fs.constants.X_OK); return true; } catch { /* try next path */ }
+  const paths = Object.entries(environment).find(([key]) => key.toLowerCase() === 'path')?.[1] || '';
+  const extensions = process.platform === 'win32'
+    ? (environment.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').filter(ext => /^\.[a-z0-9]+$/i.test(ext))
+    : [''];
+  for (const base of paths.split(path.delimiter).filter(Boolean)) {
+    for (const ext of extensions) {
+      const p = path.join(base, command + ext);
+      try {
+        if (!(await fs.stat(p)).isFile()) continue;
+        await fs.access(p, fs.constants.X_OK);
+        return true;
+      } catch (error) {
+        if (!['ENOENT','ENOTDIR','EACCES','EPERM'].includes(error.code)) throw error;
+      }
+    }
   }
   return false;
 }
 export async function detectAgents(environment = process.env) {
   const detected=[];
-  for (const [agent,info] of Object.entries(AGENTS)) if (await isExecutableOnPath(info.command, environment)) detected.push(agent);
+  for (const [agent,info] of Object.entries(AGENTS)) {
+    const found = await isExecutableOnPath(info.command, environment) ||
+      (agent === 'cursor' && await isExecutableOnPath('cursor-agent', environment));
+    if (found) detected.push(agent);
+  }
   return detected;
 }
 function validateScope(scope) { if (!['project','global'].includes(scope)) throw new Error('scope must be project or global'); }
@@ -122,6 +138,11 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
   const rootAbs=path.resolve(root);
   const projectConfigExists=scope==='project' && await exists(path.join(stateDir(rootAbs),'config.json'));
   const needsConfig=scope==='project' && withRuntime && !projectConfigExists;
+  let config=null;
+  if (scope==='project' && withRuntime && projectConfigExists) {
+    try { config=await readConfig(rootAbs); }
+    catch (error) { throw new Error(`Invalid BuildSteward project configuration: ${error.message}`); }
+  }
   const fingerprint=await payloadFingerprint(SKILL_SOURCE,withRuntime);
   const unchanged=b=>b.status==='managed' && b.fingerprint===fingerprint && b.marker.withRuntime===withRuntime;
   if (dryRun) return {scope,agents:chosen,mode,graph,dryRun:true,withRuntime,paths:before.map(b=>({path:b.path,action:unchanged(b)?'unchanged':b.status==='missing'?'install':'update',previousStatus:b.status})),projectConfig:needsConfig?'create':projectConfigExists?'preserve':'not-touched'};
@@ -129,6 +150,7 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
   if (needsConfig) {
     await initialize(rootAbs,mode);
     if(graph!=='off') await setConfig(rootAbs,'memory.codeGraph.mode',graph);
+    config=await readConfig(rootAbs);
   }
   for (const b of before) {
     if (unchanged(b)) {
@@ -149,7 +171,6 @@ export async function setupInstallation({root=process.cwd(),home=os.homedir(),sc
       results.push({path:b.path,action:b.status==='missing'?'installed':'updated',backup});
     } finally {await fs.rm(tempDir,{recursive:true,force:true}).catch(()=>{});}
   }
-  const config=withRuntime && scope==='project' ? await readConfig(rootAbs) : null;
   return {scope,agents:chosen,mode:config?.autonomy.mode ?? null,graph:config?.memory.codeGraph.mode ?? null,withRuntime,paths:results,projectConfig:needsConfig?'created':projectConfigExists?'preserved':'not-touched'};
 }
 
@@ -166,7 +187,8 @@ export async function installationDoctor({root=process.cwd(),home=os.homedir(),s
   }));
   let config='not-configured';
   if(scope==='project') { try {const c=await readConfig(root);config={autonomy:c.autonomy.mode,graph:c.memory.codeGraph.mode};}catch(e){config=e.message;} }
-  return {scope,project:path.resolve(root),node:process.version,config,healthy:statuses.every(s=>s.healthy),agents:statuses,notes:['Skill file presence does not prove host activation. Check the agent skill list.','Approval records cannot enforce permissions on unrestricted shell tools.']};
+  const configHealthy=scope!=='project' || !statuses.some(s=>s.runtimeExists) || typeof config==='object';
+  return {scope,project:path.resolve(root),node:process.version,config,configHealthy,healthy:configHealthy && statuses.every(s=>s.healthy),agents:statuses,notes:['Skill file presence does not prove host activation. Check the agent skill list.','Approval records cannot enforce permissions on unrestricted shell tools.']};
 }
 
 export async function uninstallInstallation({root=process.cwd(),home=os.homedir(),scope='project',agents,force=false,dryRun=false}={}) {
