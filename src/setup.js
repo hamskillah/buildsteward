@@ -229,9 +229,15 @@ export async function rollbackInstallation({root=process.cwd(),home=os.homedir()
     const backupDir=backupBase(scope,root,home);
     const prefix=backupPrefix(dest);
     const backups=(await fs.readdir(backupDir).catch(e=>{if(e.code==='ENOENT')return [];throw e;})).filter(x=>x.startsWith(prefix)).sort().reverse();
-    if(!backups.length) throw new Error(`No previous managed installation backup for ${dest}`);
-    const previous=path.join(backupDir,backups[0]);
-    if ((await inspectTarget(previous)).status!=='managed') throw new Error(`Previous skill backup is modified or untrusted: ${previous}`);
+    let previous;
+    for (const backup of backups) {
+      const candidate=path.join(backupDir,backup);
+      if ((await inspectTarget(candidate)).status==='managed') {
+        previous=candidate;
+        break;
+      }
+    }
+    if (!previous) throw new Error(`No previous managed installation backup for ${dest}`);
     entries.push({path:dest,backup:previous});
   }
   if(dryRun) return {dryRun:true,paths:entries};

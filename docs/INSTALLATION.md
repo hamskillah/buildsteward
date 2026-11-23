@@ -51,7 +51,7 @@ buildsteward rollback --agents codex
 buildsteward uninstall --agents codex
 ```
 
-Rollback uses an existing managed backup. Uninstall moves managed skill files to a backup and preserves project settings and work history. Replacing modified managed files requires `--force` and saves a backup.
+Rollback restores the newest intact managed backup. It skips and preserves modified backups. Uninstall moves managed skill files to a backup and preserves project settings and work history. Replacing modified managed files requires `--force` and saves a backup.
 
 ### Optional Codebase Memory provider
 
