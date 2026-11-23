@@ -7,7 +7,7 @@ const SYSTEMS = { npm: 'npm', pypi: 'pypi', cargo: 'cargo', go: 'go', maven: 'ma
 const OSV_NAMES = { npm: 'npm', pypi: 'PyPI', cargo: 'crates.io', go: 'Go', maven: 'Maven', nuget: 'NuGet', rubygems: 'RubyGems' };
 
 function validIdentity(ecosystem, name, version) {
-  if (!SYSTEMS[ecosystem]) throw new Error('Unsupported ecosystem: ' + ecosystem);
+  if (!Object.hasOwn(SYSTEMS, ecosystem)) throw new Error('Unsupported ecosystem: ' + ecosystem);
   if (!name || typeof name !== 'string' || name.length > 200 || !/^[\w@./+:\-]+$/.test(name)) throw new Error('Invalid package name');
   if (!version || typeof version !== 'string' || version.length > 120 || !/^[\w.+!~:\-]+$/.test(version)) throw new Error('Use an exact published version, not a range or wildcard');
 }
@@ -17,13 +17,16 @@ function cacheFile(root, key) { return path.join(stateDir(root), 'cache', create
 async function fromCache(filename, ttlHours, offline) {
   try {
     const payload = JSON.parse(await fs.readFile(filename, 'utf8'));
-    if (offline || Date.now() - Date.parse(payload.observedAt) <= ttlHours * 3600000) return { ...payload, stale: Date.now() - Date.parse(payload.observedAt) > ttlHours * 3600000 };
+    const age = Date.now() - Date.parse(payload.observedAt);
+    if (!Number.isFinite(age) || age < 0) return null;
+    const stale = age > ttlHours * 3600000;
+    if (offline || !stale) return { ...payload, stale };
   } catch (error) { if (error.code !== 'ENOENT' && error instanceof SyntaxError) return null; }
   return null;
 }
 
 async function requestJSON(url, { method = 'GET', body, fetcher = fetch, validate = () => true, select = data => data }) {
-  const response = await fetcher(url, { method, headers: { 'accept': 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
+  const response = await fetcher(url, { method, redirect: 'error', headers: { 'accept': 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const pieces = [];
   let size = 0;
@@ -53,6 +56,14 @@ export async function fetchEvidence(root, key, url, options, { offline = false, 
   }
 }
 
+export function validOsvQueryResult(data) {
+  return data !== null && typeof data === 'object' && !Array.isArray(data) &&
+    Object.keys(data).every(key => key === 'vulns' || key === 'next_page_token') &&
+    (data.next_page_token === undefined || typeof data.next_page_token === 'string') &&
+    (data.vulns === undefined || (Array.isArray(data.vulns) &&
+      data.vulns.every(item => typeof item?.id === 'string' && /^[A-Za-z0-9._:-]{1,120}$/.test(item.id))));
+}
+
 export async function inspectDependency(root, { ecosystem, name, version, offline = false }, options = {}) {
   const config = await readConfig(root);
   validIdentity(ecosystem, name, version);
@@ -60,16 +71,21 @@ export async function inspectDependency(root, { ecosystem, name, version, offlin
   const osvUrl = 'https://api.osv.dev/v1/query';
   const actualOffline = offline || config.intelligence.externalResearch === 'never';
   const deps = await fetchEvidence(root, `deps:${ecosystem}:${name}:${version}`, depsUrl, {}, { ...options, offline: actualOffline, cacheHours: config.intelligence.cacheHours });
-  const osv = await fetchEvidence(root, `osv:${ecosystem}:${name}:${version}`, osvUrl, { method: 'POST', body: { version, package: { name, ecosystem: OSV_NAMES[ecosystem] } } }, { ...options, offline: actualOffline, cacheHours: config.intelligence.cacheHours });
+  const osv = await fetchEvidence(root, `osv:${ecosystem}:${name}:${version}`, osvUrl,
+    { method: 'POST', body: { version, package: { name, ecosystem: OSV_NAMES[ecosystem] } }, validate: validOsvQueryResult },
+    { ...options, offline: actualOffline, cacheHours: config.intelligence.cacheHours });
   const dv = deps.data;
-  const vulnerabilities = osv.data?.vulns;
-  const haveBoth = !!(dv && Array.isArray(dv.licenses) && dv.licenses.length > 0 && Array.isArray(dv.advisoryKeys) && osv.data && Array.isArray(vulnerabilities ?? []) && !osv.data.next_page_token);
+  const vulnerabilities = osv.data?.vulns ?? [];
+  const haveBoth = deps.status !== 'cached_stale' && osv.status !== 'cached_stale' &&
+    !!(dv && Array.isArray(dv.licenses) && dv.licenses.length > 0 && Array.isArray(dv.advisoryKeys) &&
+      osv.data && !osv.data.next_page_token && vulnerabilities.length <= 100);
   const licenses = Array.isArray(dv?.licenses) ? dv.licenses : null;
   return {
     package: { ecosystem, name, version },
     status: haveBoth ? 'evidence_collected' : 'incomplete_evidence',
     knownDirectAdvisories: Array.isArray(dv?.advisoryKeys) ? dv.advisoryKeys.map(a => a.id || a.name).filter(Boolean) : null,
-    knownOsvVulnerabilities: Array.isArray(vulnerabilities) ? vulnerabilities.map(v => v.id).filter(Boolean).slice(0,100) : osv.data ? [] : null,
+    knownOsvVulnerabilities: osv.data && (vulnerabilities.length || !osv.data.next_page_token)
+      ? vulnerabilities.slice(0, 100).map(v => v.id) : null,
     licenses,
     deprecated: dv?.isDeprecated ?? null,
     publishedAt: dv?.publishedAt ?? null,

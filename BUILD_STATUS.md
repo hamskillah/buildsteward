@@ -1,24 +1,29 @@
 # Verified results
 
-`npm run check` covers skill structure, CLI behavior, benchmark scoring, and installation from a freshly packed npm artifact. The [CI workflow](https://github.com/hamskillah/buildsteward/actions/workflows/check.yml) runs on Node.js 22, 24, and 26.
+`npm run check` covers skill structure, CLI behavior, benchmark scoring, and installation from a freshly packed npm artifact. The [CI workflow](https://github.com/hamskillah/buildsteward/actions/workflows/check.yml) runs on Linux with Node.js 22, 24, and 26. Package installation and upgrade also run on macOS and Windows with Node.js 24.
 
 ## Agent compatibility
 
-Explicit activation was exercised on fresh project fixtures. Every agent below passed the bugfix and offline lockfile tasks. The bugfix was verified by rerunning the tests separately.
+Codex, OpenCode, Claude Code, Pi, and Hermes passed the bugfix and offline lockfile tasks on fresh project fixtures. The bugfix was verified by rerunning the tests separately. Cursor has separate read-only smoke evidence.
 
 | Agent | Version | Activation evidence |
 |---|---|---|
-| Codex CLI | 0.171.0 | Read installed `SKILL.md` |
-| OpenCode | 1.19.6 | Native skill tool call |
-| Claude Code | 2.1.330 | Native skill tool call and bundled `deps inventory` |
+| Codex CLI | 0.171.0 project, 0.160.0 global | Read project and global `SKILL.md`. The global skill-only run used OpenCode Go in read-only mode |
+| OpenCode | 1.19.6 | Native skill tool call in project and global skill-only scopes |
+| Claude Code | 2.1.330 | Native skill tool call in project and global skill-only scopes, plus bundled project `deps inventory` |
+| Cursor CLI | 2026.11.22-e9042b2 | Read project and global `SKILL.md`; project `deps inventory` returned the independently verified digest |
 | Pi | 1.5.2 | Read installed `SKILL.md` with project trust enabled |
 | Hermes Agent | `a3b993b9` | Native `skill_view` and project CLI call |
 
-In the read-only checks, agents reported the failing test and the release guard's denial. Independent checks confirmed tracked files stayed unchanged. Hermes issued one additional read-only diagnostic command. Automatic skill selection varies by agent and task. Cursor has an installer target and has yet to pass an authenticated activation test.
+In the read-only checks, agents reported the failing test and the release guard's denial. Independent checks confirmed tracked files stayed unchanged. Hermes issued one additional read-only diagnostic command. Automatic skill selection varies by agent and task.
+
+### Cursor CLI
+
+The authenticated Auto model read the project skill and ran the bundled offline inventory command in allowlist mode (10.67 seconds). Its exit code was zero and the tool result's SHA-256 matched the unchanged lockfile. A separate read-only session with no project skill loaded the global skill-only installation (7.87 seconds). Cursor's sandbox failed to start on the test host, so the project test used a shell allowlist for the single inventory command. Editor activation and Cursor sandbox behavior were outside this CLI smoke.
 
 ## npm release
 
-npm `0.1.0` passed a clean registry install, Codex skill setup, and an installation check.
+The published npm packages `0.2.0` and `0.2.1` were used for a fresh install, upgrade, strict doctor, rollback, and uninstall across the four built-in agent layouts, in both project and global scope on Linux. The lifecycle checks confirmed that project configuration was preserved.
 
 ## Additional checks
 

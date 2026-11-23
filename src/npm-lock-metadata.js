@@ -18,8 +18,37 @@ function select(data) {
   };
 }
 
-export async function metadataForNpmLock(root, { name, version, online = false }, { fetcher = fetch } = {}) {
+function platformMatch(rules, value) {
+  if (!rules?.length) return 'unknown';
+  if (rules.length === 1 && rules[0] === 'any') return 'matches';
+  if (rules.includes('!' + value)) return 'excluded';
+  const allowed = rules.filter(rule => !rule.startsWith('!'));
+  return !allowed.length || allowed.includes(value) ? 'matches' : 'excluded';
+}
+
+function assess(data, licenses, checkPlatform, host) {
+  if (!licenses && !checkPlatform) return {};
+  const assessment = {};
+  if (licenses) {
+    const declared = data?.license?.trim();
+    assessment.license = !declared ? 'unknown' : licenses.includes(declared) ? 'allowlisted' : 'not_allowlisted';
+  }
+  if (checkPlatform) {
+    const os = platformMatch(data?.platform?.os, host.platform);
+    const cpu = platformMatch(data?.platform?.cpu, host.arch);
+    assessment.host = { os: host.platform, cpu: host.arch, osMatch: os, cpuMatch: cpu,
+      libc: data?.platform?.libc?.length ? 'not_evaluated' : 'unknown' };
+  }
+  return { assessment };
+}
+
+export async function metadataForNpmLock(root, { name, version, online = false, allowLicense, checkPlatform = false },
+  { fetcher = fetch, host = process } = {}) {
   if (!declaration(name) || !declaration(version)) throw new Error('Exact package name and version required');
+  const licenses = allowLicense?.split(',').map(item => item.trim());
+  if (licenses && (licenses.length > 25 || licenses.some(item => !declaration(item)))) {
+    throw new Error('Allowlist must contain 1–25 non-empty license declarations');
+  }
   let matchedEdges = 0;
   let publicEdges = 0;
   const graph = await graphNpmLock(root, { onEdge(edge, resolved) {
@@ -31,7 +60,7 @@ export async function metadataForNpmLock(root, { name, version, online = false }
   const base = { package: { ecosystem: 'npm', name, version }, lockfileDigest: graph.lockfileDigest, graphStatus: graph.status,
     matchedEdges, publicEdges };
   if (!publicEdges) {
-    return { ...base, status: matchedEdges ? 'unverified_registry_origin' : 'not_in_resolved_graph', metadata: null, source: null };
+    return { ...base, status: matchedEdges ? 'unverified_registry_origin' : 'not_in_resolved_graph', metadata: null, source: null, ...assess(null, licenses, checkPlatform, host) };
   }
 
   const config = await readConfig(root);
@@ -46,6 +75,8 @@ export async function metadataForNpmLock(root, { name, version, online = false }
       publicEdges !== matchedEdges || !evidence.data.license ? 'partial_evidence' : 'publisher_metadata_collected',
     source: { name: 'npm registry', url, status: evidence.status, observedAt: evidence.observedAt },
     metadata: evidence.data,
+    ...assess(evidence.status === 'cached_stale' || publicEdges !== matchedEdges ? null : evidence.data,
+      licenses, checkPlatform, host),
     note: 'Values are publisher declarations. Null means no usable declaration. This does not verify license compliance or runtime compatibility.',
   };
 }

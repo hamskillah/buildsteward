@@ -21,7 +21,7 @@ Open a fresh agent session and try this on a real issue:
 
 > Use BuildSteward to investigate this bug. Keep the fix scoped and show which checks passed.
 
-Explicit skill use has been tested in **Codex, OpenCode, Claude Code, Pi, and Hermes**. [Agent-specific setup](docs/INSTALLATION.md) · [Verified results](BUILD_STATUS.md)
+Explicit skill use has been tested in **Codex, OpenCode, Claude Code, Cursor CLI, Pi, and Hermes**. [Agent-specific setup](docs/INSTALLATION.md) · [Verified results](BUILD_STATUS.md)
 
 ## Example workflows
 
@@ -51,7 +51,7 @@ The skill uses your existing repository tools and points the agent to a focused 
 
 ## Optional CLI from npm
 
-Install the CLI separately if you want local project inspection, npm lockfile evidence, or verification history across sessions. Requires Node.js 22 or later.
+Install the CLI separately if you want local project inspection, npm and Composer lockfile evidence, or verification history across sessions. Requires Node.js 22 or later.
 
 ```bash
 npm install -g @hamskillah/buildsteward
@@ -62,4 +62,4 @@ Run `buildsteward` from your project to open the setup menu. [CLI setup and comm
 
 ## What has been tested
 
-The [benchmark suite](docs/BENCHMARKS.md) covers bug fixes, dependency review, code review, and backward compatibility. The initial OpenCode Go comparison passed all 12 bugfix and dependency-review attempts across two models. Token usage varied by task and configuration. [Agent test results](BUILD_STATUS.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+The [benchmark suite](docs/BENCHMARKS.md) covers bug fixes, code reviews, backward compatibility, and decisions about dependencies, architecture, accessibility, and releases. The initial OpenCode Go comparison passed all 12 bugfix and dependency-review attempts across two models. Token usage varied by task and configuration. [Agent test results](BUILD_STATUS.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)

@@ -57,3 +57,23 @@ test('metadata omits private tarballs and distinguishes missing declarations fro
   assert.equal(incomplete.metadata.license, null);
   assert.equal(incomplete.metadata.platform.os, null);
 });
+
+test('optional checks compare exact licenses and host platform without assuming missing evidence passes', async t => {
+  const root = await fixture(t);
+  const host = { platform: 'linux', arch: 'arm64' };
+  const report = await metadataForNpmLock(root, {
+    ...query, allowLicense: 'MIT, Apache-2.0', checkPlatform: true,
+  }, { host, fetcher: async () => Response.json({ name, version, license: 'MIT OR Apache-2.0',
+    os: ['!win32'], cpu: ['any', '!arm64'], libc: ['glibc'] }) });
+  assert.deepEqual(report.assessment, { license: 'not_allowlisted',
+    host: { os: 'linux', cpu: 'arm64', osMatch: 'matches', cpuMatch: 'excluded', libc: 'not_evaluated' } });
+  const mixedRule = await metadataForNpmLock(root, { ...query, online: false, checkPlatform: true },
+    { host: { platform: 'linux', arch: 'x64' } });
+  assert.equal(mixedRule.assessment.host.cpuMatch, 'excluded');
+  const unverified = await metadataForNpmLock(root, {
+    name, version: '9.9.9', allowLicense: 'MIT', checkPlatform: true,
+  }, { host });
+  assert.equal(unverified.assessment.license, 'unknown');
+  assert.equal(unverified.assessment.host.osMatch, 'unknown');
+  await assert.rejects(metadataForNpmLock(root, { ...query, allowLicense: 'MIT,' }), /Allowlist/);
+});

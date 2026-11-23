@@ -1,18 +1,11 @@
 import { readConfig } from './config.js';
-import { fetchEvidence } from './dependency.js';
+import { fetchEvidence, validOsvQueryResult } from './dependency.js';
 import { graphNpmLock, isRegistryTarball } from './npm-lock-graph.js';
 
 const SOURCE = 'https://api.osv.dev/v1/querybatch';
 const LIMIT = 100;
 const MAX_IDS = 20;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-
-function validResult(result) {
-  if (!object(result) || !Object.keys(result).every(key => ['vulns', 'next_page_token'].includes(key))) return false;
-  if (Object.hasOwn(result, 'next_page_token') && typeof result.next_page_token !== 'string') return false;
-  return !Object.hasOwn(result, 'vulns') || (Array.isArray(result.vulns) &&
-    result.vulns.every(item => object(item) && typeof item.id === 'string' && /^[A-Za-z0-9._:-]{1,120}$/.test(item.id)));
-}
 
 export async function advisoriesForNpmLock(root, { online = false } = {}, { fetcher = fetch } = {}) {
   const candidates = new Map();
@@ -31,7 +24,7 @@ export async function advisoriesForNpmLock(root, { online = false } = {}, { fetc
   const config = await readConfig(root);
   const offline = !online || config.intelligence.externalResearch === 'never';
   const queries = [...candidates.keys()].sort().slice(0, LIMIT).map(key => candidates.get(key));
-  const validate = data => object(data) && Array.isArray(data.results) && data.results.length === queries.length && data.results.every(validResult);
+  const validate = data => object(data) && Array.isArray(data.results) && data.results.length === queries.length && data.results.every(validOsvQueryResult);
   const batch = queries.length ? await fetchEvidence(root, `npm-graph-osv-v1:${JSON.stringify(queries)}`, SOURCE,
     { method: 'POST', body: { queries }, validate }, { offline, fetcher, cacheHours: config.intelligence.cacheHours }) :
     { status: 'not_queried', data: null, observedAt: null };
